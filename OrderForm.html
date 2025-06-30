@@ -1,0 +1,1767 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#8B4513">
+  <title>Hyggelyカンパーニュ専門店 ご予約フォーム</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <style>
+    body {
+      background: linear-gradient(135deg, #fff8f0 0%, #f5e6d3 100%);
+      color: #2c1810;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    .container { max-width: 800px; margin: 0 auto; padding: 10px; }
+    
+    /* ヘッダー */
+    .header {
+      margin: 1rem 0;
+      padding: 2rem 1rem;
+      border-radius: 15px;
+      background: linear-gradient(135deg, #ffffff 0%, #faf7f2 100%);
+      box-shadow: 0 8px 30px rgba(139, 69, 19, 0.15);
+      text-align: center;
+    }
+    .header h1 {
+      color: #8B4513;
+      font-size: clamp(1.5rem, 4vw, 2.5rem);
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+    
+    /* カード */
+    .card {
+      border: none;
+      border-radius: 15px;
+      box-shadow: 0 8px 25px rgba(139, 69, 19, 0.1);
+      margin-bottom: 1.5rem;
+      background: #ffffff;
+      transition: all 0.3s ease;
+    }
+    .card:hover {
+      box-shadow: 0 12px 35px rgba(139, 69, 19, 0.15);
+    }
+    .card-header {
+      padding: 1.5rem;
+      background: linear-gradient(135deg, #8B4513 0%, #a0522d 100%);
+      color: white;
+      border-radius: 15px 15px 0 0;
+    }
+    .card-body { padding: 1.5rem; }
+    
+    /* フォーム */
+    .form-control, .form-select {
+      border-radius: 10px;
+      border: 2px solid #e8dcc6;
+      padding: 0.8rem 1rem;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: #8B4513;
+      box-shadow: 0 0 0 0.2rem rgba(139, 69, 19, 0.15);
+    }
+    .form-control:valid {
+      border-color: #28a745;
+    }
+    .form-control:invalid {
+      border-color: #dc3545;
+    }
+    
+    /* ボタン */
+    .btn-primary {
+      background: linear-gradient(135deg, #8B4513 0%, #a0522d 100%);
+      border: none;
+      font-weight: 600;
+      padding: 1rem 2rem;
+      border-radius: 10px;
+      transition: all 0.3s ease;
+    }
+    .btn-primary:hover { 
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(139, 69, 19, 0.3);
+    }
+    .btn-primary:disabled {
+      opacity: 0.6;
+      transform: none;
+    }
+    
+    /* テーブル */
+    .table { 
+      background: #ffffff; 
+      border-radius: 10px; 
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    }
+    .table th {
+      background: linear-gradient(135deg, #f8f6f0 0%, #f0ede5 100%);
+      font-weight: 700;
+      border: none;
+      padding: 1rem 0.5rem;
+      font-size: 0.9rem;
+    }
+    .table td { 
+      padding: 0.8rem 0.5rem; 
+      border-color: #f0f0f0;
+      vertical-align: middle;
+    }
+    
+    /* 商品テーブルのモバイル最適化 */
+    @media (max-width: 768px) {
+      .table-responsive {
+        border: none;
+        box-shadow: none;
+      }
+      .table th, .table td {
+        padding: 0.5rem 0.3rem;
+        font-size: 0.85rem;
+      }
+      .table th:first-child, .table td:first-child {
+        width: 45%;
+      }
+      .table th:nth-child(2), .table td:nth-child(2) {
+        width: 20%;
+      }
+      .table th:nth-child(3), .table td:nth-child(3) {
+        width: 15%;
+      }
+      .table th:nth-child(4), .table td:nth-child(4) {
+        width: 20%;
+      }
+    }
+    
+    /* ローディング */
+    .loading {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 300px;
+      background: white;
+      border-radius: 15px;
+      margin: 1rem 0;
+    }
+    
+    /* ステータス表示 */
+    .status-indicator {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      background: rgba(40, 167, 69, 0.9);
+      color: white;
+      padding: 8px 15px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      transition: all 0.3s ease;
+    }
+    
+    /* 在庫バッジ */
+    .stock-ok { background-color: #28a745; }
+    .stock-low { background-color: #ffc107; color: #000; }
+    .stock-out { background-color: #dc3545; }
+    .stock-updating { background-color: #6c757d; }
+    
+    /* 数量選択器のスタイル改善 */
+    .quantity-selector {
+      display: flex;
+      align-items: center;
+      border: 2px solid #e8dcc6;
+      border-radius: 8px;
+      overflow: hidden;
+      background: white;
+    }
+    .quantity-btn {
+      border: none;
+      background: #f8f9fa;
+      width: 35px;
+      height: 35px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .quantity-btn:hover {
+      background: #8B4513;
+      color: white;
+    }
+    .quantity-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .quantity-input {
+      border: none;
+      width: 50px;
+      text-align: center;
+      font-weight: bold;
+      background: transparent;
+    }
+    .quantity-input:focus {
+      outline: none;
+      box-shadow: none;
+    }
+    
+    /* 在庫警告表示 */
+    .stock-warning {
+      display: none;
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      color: #856404;
+      padding: 0.5rem;
+      border-radius: 4px;
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
+    }
+    .stock-warning.show {
+      display: block;
+      animation: slideDown 0.3s ease;
+    }
+    
+    /* 在庫チェック中表示 */
+    .checking-stock {
+      opacity: 0.7;
+      pointer-events: none;
+    }
+    
+    /* プログレスバー */
+    .progress-indicator {
+      margin-bottom: 2rem;
+    }
+    .progress-step {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .step {
+      flex: 1;
+      text-align: center;
+      position: relative;
+    }
+    .step.active .step-circle {
+      background: #8B4513;
+      color: white;
+    }
+    .step.completed .step-circle {
+      background: #28a745;
+      color: white;
+    }
+    .step-circle {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #e9ecef;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 0.5rem;
+      font-weight: bold;
+      transition: all 0.3s ease;
+    }
+    .step-label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #6c757d;
+    }
+    .step.active .step-label {
+      color: #8B4513;
+    }
+    
+    /* アニメーション */
+    .pulse { animation: pulse 2s infinite; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(1.05); }
+    }
+    
+    .fade-in {
+      animation: fadeIn 0.5s ease-in;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* 合計金額の強調 */
+    .total-price {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #8B4513;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+    }
+    
+    /* スクリーン別の最適化 */
+    .screen { display: none; }
+    .screen.active { display: block; }
+    
+    /* バリデーションメッセージ */
+    .invalid-feedback {
+      display: block;
+      font-size: 0.875rem;
+      color: #dc3545;
+      margin-top: 0.25rem;
+    }
+    .valid-feedback {
+      display: block;
+      font-size: 0.875rem;
+      color: #28a745;
+      margin-top: 0.25rem;
+    }
+    
+    /* 商品検索 */
+    .product-search {
+      margin-bottom: 1rem;
+    }
+    .product-filter {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      padding: 0.5rem 1rem;
+      border: 2px solid #e8dcc6;
+      background: white;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 0.8rem;
+    }
+    .filter-btn.active {
+      background: #8B4513;
+      color: white;
+      border-color: #8B4513;
+    }
+    
+    /* フッター */
+    .footer {
+      color: #6b4423;
+      font-size: 0.9rem;
+      padding: 2rem 0;
+      text-align: center;
+      background: rgba(248, 243, 236, 0.8);
+      margin-top: 2rem;
+      border-radius: 15px;
+    }
+    
+    /* 商品カード */
+    .product-card {
+      position: relative;
+      border: 2px solid #e8dcc6;
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 0.5rem;
+      transition: all 0.3s ease;
+      background: white;
+    }
+    .product-card:hover {
+      border-color: #8B4513;
+      box-shadow: 0 4px 15px rgba(139, 69, 19, 0.1);
+    }
+    .product-card.selected {
+      border-color: #8B4513;
+      background: rgba(139, 69, 19, 0.05);
+    }
+    
+    /* カテゴリータブ */
+    .category-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      overflow-x: auto;
+      padding-bottom: 0.5rem;
+    }
+    .category-tab {
+      padding: 0.5rem 1rem;
+      background: white;
+      border: 2px solid #e8dcc6;
+      border-radius: 20px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.3s ease;
+    }
+    .category-tab.active {
+      background: #8B4513;
+      color: white;
+      border-color: #8B4513;
+    }
+    
+    /* 在庫状況アイコン */
+    .stock-status-icon {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      font-size: 0.7rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- ステータス表示 -->
+    <div class="status-indicator pulse" id="status">
+      <i class="bi bi-wifi"></i> 接続中
+    </div>
+    
+    <!-- ヘッダー -->
+    <div class="header fade-in">
+      <h1><i class="bi bi-shop me-2"></i>Hyggelyカンパーニュ専門店</h1>
+      <h2>ご予約フォーム</h2>
+      <p class="mt-3 mb-0"><i class="bi bi-clock me-2"></i>在庫は注文時に最新情報で確認されます</p>
+      <div class="mt-2">
+        <small class="text-muted">
+          <i class="bi bi-calendar3 me-1"></i>営業日：水曜日・土曜日 11:00-17:00
+        </small>
+      </div>
+    </div>
+    
+    <!-- ローディング画面 -->
+    <div id="loading-screen" class="screen active">
+      <div class="loading">
+        <div class="spinner-border" style="width: 3rem; height: 3rem; color: #8B4513;"></div>
+        <p class="mt-3" style="font-weight: 600; color: #8B4513;"><i class="bi bi-box-seam me-2"></i>商品情報を読み込んでいます...</p>
+        <div class="progress mt-3" style="width: 200px;">
+          <div class="progress-bar bg-warning" id="loading-progress" style="width: 0%"></div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 注文フォーム画面 -->
+    <div id="form-screen" class="screen">
+      <!-- プログレス表示 -->
+      <div class="progress-indicator">
+        <div class="progress-step">
+          <div class="step active" data-step="1">
+            <div class="step-circle">1</div>
+            <div class="step-label">お客様情報</div>
+          </div>
+          <div class="step" data-step="2">
+            <div class="step-circle">2</div>
+            <div class="step-label">商品選択</div>
+          </div>
+          <div class="step" data-step="3">
+            <div class="step-circle">3</div>
+            <div class="step-label">確認</div>
+          </div>
+          <div class="step" data-step="4">
+            <div class="step-circle">4</div>
+            <div class="step-label">完了</div>
+          </div>
+        </div>
+        <div class="progress">
+          <div class="progress-bar" id="form-progress" style="width: 25%"></div>
+        </div>
+      </div>
+      
+      <div class="card fade-in">
+        <div class="card-header">
+          <h3 class="mb-0"><i class="bi bi-person-fill me-2"></i>お客様情報・商品選択</h3>
+        </div>
+        <div class="card-body">
+          <form id="order-form" novalidate>
+            <!-- お客様情報 -->
+            <div id="customer-info-section">
+              <h5 class="mb-3"><i class="bi bi-person-badge me-2"></i>お客様情報</h5>
+              <div class="row mb-3">
+                <div class="col-md-6 mb-3">
+                  <label for="lastName" class="form-label"><i class="bi bi-person me-1"></i>氏名（姓）<span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="lastName" name="lastName" required placeholder="山田" autocomplete="family-name">
+                  <div class="invalid-feedback">姓を入力してください</div>
+                  <div class="valid-feedback">正しく入力されています</div>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="firstName" class="form-label"><i class="bi bi-person me-1"></i>氏名（名）<span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="firstName" name="firstName" required placeholder="太郎" autocomplete="given-name">
+                  <div class="invalid-feedback">名を入力してください</div>
+                  <div class="valid-feedback">正しく入力されています</div>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label for="email" class="form-label"><i class="bi bi-envelope me-1"></i>メールアドレス<span class="text-danger">*</span></label>
+                <input type="email" class="form-control" id="email" name="email" required placeholder="example@email.com" autocomplete="email">
+                <div class="invalid-feedback">有効なメールアドレスを入力してください</div>
+                <div class="valid-feedback">正しく入力されています</div>
+                <div class="form-text">確認メールがこちらのアドレスに送信されます</div>
+              </div>
+              <div class="row mb-4">
+                <div class="col-md-6 mb-3">
+                  <label for="pickupDate" class="form-label"><i class="bi bi-calendar-event me-1"></i>受取日（水・土のみ）<span class="text-danger">*</span></label>
+                  <select class="form-select" id="pickupDate" name="pickupDate" required>
+                    <option value="">受取日を選択してください</option>
+                  </select>
+                  <div class="invalid-feedback">受取日を選択してください</div>
+                  <div class="valid-feedback">正しく選択されています</div>
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="pickupTime" class="form-label"><i class="bi bi-clock me-1"></i>受取時間<span class="text-danger">*</span></label>
+                  <select class="form-select" id="pickupTime" name="pickupTime" required>
+                    <option value="">時間を選択してください</option>
+                    <option value="11:00">11:00</option>
+                    <option value="11:15">11:15</option>
+                    <option value="11:30">11:30</option>
+                    <option value="11:45">11:45</option>
+                    <option value="12:00">12:00</option>
+                    <option value="12:15">12:15</option>
+                    <option value="12:30">12:30</option>
+                    <option value="12:45">12:45</option>
+                    <option value="13:00">13:00</option>
+                    <option value="13:15">13:15</option>
+                    <option value="13:30">13:30</option>
+                    <option value="13:45">13:45</option>
+                    <option value="14:00">14:00</option>
+                    <option value="14:15">14:15</option>
+                    <option value="14:30">14:30</option>
+                    <option value="14:45">14:45</option>
+                    <option value="15:00">15:00</option>
+                    <option value="15:15">15:15</option>
+                    <option value="15:30">15:30</option>
+                    <option value="15:45">15:45</option>
+                    <option value="16:00">16:00</option>
+                    <option value="16:15">16:15</option>
+                    <option value="16:30">16:30</option>
+                    <option value="16:45">16:45</option>
+                    <option value="17:00">17:00</option>
+                  </select>
+                  <div class="invalid-feedback">受取時間を選択してください</div>
+                  <div class="valid-feedback">正しく選択されています</div>
+                </div>
+              </div>
+              
+              <button type="button" class="btn btn-primary" id="next-to-products">
+                商品選択に進む <i class="bi bi-arrow-right ms-2"></i>
+              </button>
+            </div>
+            
+            <!-- 商品選択 -->
+            <div id="product-selection-section" style="display: none;">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0"><i class="bi bi-basket me-2"></i>商品選択</h5>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="back-to-customer-info">
+                  <i class="bi bi-arrow-left me-1"></i>戻る
+                </button>
+              </div>
+              
+              <!-- 在庫状況アラート -->
+              <div id="stock-alert" class="alert alert-info" style="display: none;">
+                <i class="bi bi-info-circle me-2"></i>
+                <span id="stock-alert-message"></span>
+              </div>
+              
+              <!-- 商品検索・フィルター -->
+              <div class="product-search">
+                <div class="row mb-3">
+                  <div class="col-md-8">
+                    <input type="text" class="form-control" id="product-search-input" placeholder="商品名で検索...">
+                  </div>
+                  <div class="col-md-4">
+                    <button type="button" class="btn btn-outline-primary w-100" id="clear-search">
+                      <i class="bi bi-x-circle me-1"></i>クリア
+                    </button>
+                  </div>
+                </div>
+                
+                <!-- カテゴリータブ -->
+                <div class="category-tabs" id="category-tabs">
+                  <div class="category-tab active" data-category="all">すべて</div>
+                  <div class="category-tab" data-category="bread">パン類</div>
+                  <div class="category-tab" data-category="premium">プレミアム</div>
+                  <div class="category-tab" data-category="pizza">ピザ・その他</div>
+                </div>
+              </div>
+              
+              <!-- 商品一覧 -->
+              <div class="table-responsive">
+                <table class="table table-hover" id="products-table">
+                  <thead>
+                    <tr>
+                      <th>商品名（在庫）</th>
+                      <th>単価</th>
+                      <th>数量</th>
+                      <th>小計</th>
+                    </tr>
+                  </thead>
+                  <tbody id="products-list"></tbody>
+                  <tfoot>
+                    <tr class="table-warning">
+                      <th colspan="3" class="text-end fs-5">合計</th>
+                      <th><span id="total-price" class="total-price">¥0</span></th>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+              
+              <!-- 選択済み商品サマリー -->
+              <div id="selected-summary" class="mt-3" style="display: none;">
+                <div class="alert alert-success">
+                  <h6><i class="bi bi-check-circle me-2"></i>選択済み商品</h6>
+                  <div id="selected-items"></div>
+                </div>
+              </div>
+              
+              <!-- 備考 -->
+              <div class="mb-3">
+                <label for="note" class="form-label"><i class="bi bi-chat-text me-1"></i>その他ご要望</label>
+                <textarea class="form-control" id="note" name="note" rows="3" placeholder="アレルギーやご要望がございましたらご記入ください（任意）"></textarea>
+                <div class="form-text">
+                  <i class="bi bi-info-circle me-1"></i>
+                  アレルギー情報：商品には小麦、卵、乳製品、ナッツ類が含まれている場合があります
+                </div>
+              </div>
+              
+              <!-- 送信ボタン -->
+              <div class="d-grid mt-4">
+                <button type="button" class="btn btn-primary btn-lg" id="confirm-button" disabled>
+                  <i class="bi bi-check-circle me-2"></i>予約内容確認
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 確認画面 -->
+    <div id="confirm-screen" class="screen">
+      <div class="card fade-in">
+        <div class="card-header" style="background: linear-gradient(135deg, #28a745 0%, #34ce57 100%);">
+          <h3 class="mb-0"><i class="bi bi-check-circle me-2"></i>予約内容確認</h3>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            内容をご確認の上、間違いがなければ「この内容で予約する」ボタンを押してください。
+          </div>
+          
+          <div class="row mb-4">
+            <div class="col-md-6 mb-3">
+              <h5><i class="bi bi-person-badge me-2"></i>お客様情報</h5>
+              <dl class="row">
+                <dt class="col-4">お名前</dt>
+                <dd class="col-8" id="confirm-name"></dd>
+                <dt class="col-4">メール</dt>
+                <dd class="col-8" id="confirm-email"></dd>
+                <dt class="col-4">受取日時</dt>
+                <dd class="col-8" id="confirm-pickup"></dd>
+              </dl>
+            </div>
+            <div class="col-md-6">
+              <h5><i class="bi bi-basket me-2"></i>注文内容</h5>
+              <div id="confirm-items"></div>
+              <div class="mt-3 pt-3 border-top">
+                <strong class="total-price">合計: <span id="confirm-total">¥0</span></strong>
+              </div>
+            </div>
+          </div>
+          
+          <div id="confirm-note-section" class="mb-4" style="display:none;">
+            <h5><i class="bi bi-chat-text me-2"></i>その他ご要望</h5>
+            <p id="confirm-note" class="p-3 bg-light rounded"></p>
+          </div>
+          
+          <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>お支払いについて</strong><br>
+            当日、商品お受け取り時に現金またはPayPayでお支払いください。
+          </div>
+          
+          <div class="d-flex justify-content-between">
+            <button type="button" class="btn btn-secondary" id="back-button">
+              <i class="bi bi-arrow-left me-1"></i>戻る
+            </button>
+            <button type="button" class="btn btn-success btn-lg" id="submit-button">
+              <i class="bi bi-check2-circle me-2"></i>この内容で予約する
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 完了画面 -->
+    <div id="success-screen" class="screen">
+      <div class="card fade-in">
+        <div class="card-header" style="background: linear-gradient(135deg, #28a745 0%, #34ce57 100%);">
+          <h3 class="mb-0"><i class="bi bi-check-circle-fill me-2"></i>予約完了</h3>
+        </div>
+        <div class="card-body text-center">
+          <div class="mb-4">
+            <i class="bi bi-check-circle-fill" style="font-size: 5rem; color: #28a745;"></i>
+          </div>
+          <h4 class="mb-3">🎉 ご予約ありがとうございます 🎉</h4>
+          <p id="success-message" class="mb-4"></p>
+          
+          <div id="success-details" class="mb-4"></div>
+          
+          <div class="alert alert-info">
+            <h6><i class="bi bi-envelope me-2"></i>確認メールについて</h6>
+            <p class="mb-0">
+              ご登録のメールアドレスに確認メールをお送りしました。<br>
+              メールが届かない場合は、迷惑メールフォルダもご確認ください。
+            </p>
+          </div>
+          
+          <div class="alert alert-success">
+            <h6><i class="bi bi-calendar-check me-2"></i>受取について</h6>
+            <p class="mb-0">
+              受取日当日は、指定のお時間にお越しください。<br>
+              お支払いは現金またはPayPayで承ります。
+            </p>
+          </div>
+          
+          <div class="d-grid gap-2">
+            <button type="button" class="btn btn-primary btn-lg" id="new-order-button">
+              <i class="bi bi-plus-circle me-2"></i>新しい予約をする
+            </button>
+            <button type="button" class="btn btn-outline-secondary" onclick="window.print()">
+              <i class="bi bi-printer me-2"></i>この画面を印刷
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- エラー画面 -->
+    <div id="error-screen" class="screen">
+      <div class="card fade-in">
+        <div class="card-header" style="background: linear-gradient(135deg, #dc3545 0%, #e55565 100%);">
+          <h3 class="mb-0"><i class="bi bi-exclamation-triangle-fill me-2"></i>エラーが発生しました</h3>
+        </div>
+        <div class="card-body text-center">
+          <div class="mb-4">
+            <i class="bi bi-exclamation-triangle-fill" style="font-size: 5rem; color: #dc3545;"></i>
+          </div>
+          <p id="error-message" class="mb-4"></p>
+          
+          <div class="alert alert-warning">
+            <h6><i class="bi bi-lightbulb me-2"></i>解決方法</h6>
+            <ul class="text-start mb-0">
+              <li>ページを再読み込みしてみてください</li>
+              <li>インターネット接続を確認してください</li>
+              <li>しばらく時間をおいてから再度お試しください</li>
+              <li>問題が解決しない場合は、お手数ですが直接お電話でお問い合わせください</li>
+            </ul>
+          </div>
+          
+          <div class="d-grid gap-2">
+            <button type="button" class="btn btn-primary btn-lg" id="retry-button">
+              <i class="bi bi-arrow-clockwise me-2"></i>やり直す
+            </button>
+            <button type="button" class="btn btn-outline-secondary" onclick="location.reload()">
+              <i class="bi bi-bootstrap-reboot me-2"></i>ページを再読み込み
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- フッター -->
+    <div class="footer">
+      <p>&copy; <script>document.write(new Date().getFullYear())</script> Hyggelyカンパーニュ専門店</p>
+      <p>心を込めて手作りするこだわりのパンをお届けします</p>
+      <p><small>ご不明な点がございましたら、お気軽にお問い合わせください</small></p>
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    let inventoryData = [];
+    let totalPrice = 0;
+    let isSubmitting = false;
+    let currentStep = 1;
+    let selectedProducts = new Map();
+    let stockCheckTimeout = null;
+    let lastStockCheckTime = 0;
+
+    // 初期化
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('🍞 Hyggelyシステム起動 v5.0 - 修正版');
+      generatePickupDates();
+      loadInventoryData();
+      setupEventListeners();
+      updateStatus('接続完了', 'success');
+      animateLoading();
+    });
+
+    // ローディングアニメーション
+    function animateLoading() {
+      let progress = 0;
+      const progressBar = document.getElementById('loading-progress');
+      const interval = setInterval(() => {
+        progress += Math.random() * 10;
+        if (progress >= 90) {
+          progress = 90;
+          clearInterval(interval);
+        }
+        progressBar.style.width = progress + '%';
+      }, 100);
+    }
+
+    // イベントリスナー設定
+    function setupEventListeners() {
+      // ステップ遷移
+      document.getElementById('next-to-products').addEventListener('click', showProductSelection);
+      document.getElementById('back-to-customer-info').addEventListener('click', showCustomerInfo);
+      document.getElementById('confirm-button').addEventListener('click', showConfirmation);
+      document.getElementById('back-button').addEventListener('click', showFormScreen);
+      document.getElementById('submit-button').addEventListener('click', submitOrder);
+      document.getElementById('new-order-button').addEventListener('click', resetForm);
+      document.getElementById('retry-button').addEventListener('click', () => {
+        showLoadingScreen();
+        loadInventoryData();
+      });
+
+      // フォームバリデーション
+      const form = document.getElementById('order-form');
+      form.addEventListener('input', validateFormRealTime);
+      form.addEventListener('change', validateFormRealTime);
+
+      // 商品検索
+      document.getElementById('product-search-input').addEventListener('input', filterProducts);
+      document.getElementById('clear-search').addEventListener('click', clearSearch);
+
+      // カテゴリータブ
+      document.querySelectorAll('.category-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+          document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+          this.classList.add('active');
+          filterProductsByCategory(this.dataset.category);
+        });
+      });
+    }
+
+    // 受取日選択肢生成（水・土のみ）
+    function generatePickupDates() {
+      const select = document.getElementById('pickupDate');
+      const today = new Date();
+      const currentHour = today.getHours();
+      
+      for (let i = 0; i <= 30; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        const dayOfWeek = date.getDay();
+        
+        if (dayOfWeek === 3 || dayOfWeek === 6) { // 水曜日または土曜日
+          if (i === 0 && currentHour >= 9) continue; // 当日9時以降は除外
+          
+          const option = document.createElement('option');
+          option.value = formatDate(date);
+          option.textContent = formatDisplayDate(date) + (dayOfWeek === 3 ? '（水）' : '（土）') + (i === 0 ? ' [本日]' : '');
+          select.appendChild(option);
+        }
+      }
+    }
+
+    // 在庫データ読み込み（初回のみ）
+    function loadInventoryData() {
+      updateStatus('商品情報読み込み中', 'loading');
+      
+      google.script.run
+        .withSuccessHandler(function(products) {
+          inventoryData = products || [];
+          renderProductList();
+          updateTotalPrice();
+          finishLoading();
+          updateStatus('読み込み完了', 'success');
+        })
+        .withFailureHandler(function(error) {
+          console.error('在庫データ取得エラー:', error);
+          showErrorScreen('商品情報の取得に失敗しました: ' + error);
+          updateStatus('接続エラー', 'error');
+        })
+        .getInventoryDataForForm();
+    }
+
+    // 在庫状況のみ更新（選択状態を保持）
+    function updateStockStatus() {
+      const now = Date.now();
+      
+      // 最後のチェックから30秒以内の場合はスキップ
+      if (now - lastStockCheckTime < 30000) {
+        return;
+      }
+      
+      lastStockCheckTime = now;
+      
+      console.log('🔄 在庫状況バックグラウンドチェック開始');
+      
+      google.script.run
+        .withSuccessHandler(function(products) {
+          if (!products || products.length === 0) return;
+          
+          // 現在の選択状態を保存
+          const currentSelections = saveCurrentSelections();
+          
+          // 在庫データを更新
+          inventoryData = products;
+          
+          // 在庫表示のみ更新（選択状態は保持）
+          updateStockDisplays();
+          
+          // 選択状態を復元
+          restoreSelections(currentSelections);
+          
+          // 在庫不足の警告チェック
+          checkStockWarnings(currentSelections);
+          
+          console.log('✅ 在庫状況更新完了（選択状態保持）');
+        })
+        .withFailureHandler(function(error) {
+          console.warn('⚠️ 在庫チェックエラー（継続可能）:', error);
+        })
+        .getInventoryDataForForm();
+    }
+
+    // 現在の選択状態を保存
+    function saveCurrentSelections() {
+      const selections = {};
+      
+      inventoryData.forEach((product, index) => {
+        const input = document.getElementById(`product_${index}`);
+        if (input) {
+          const quantity = parseInt(input.value) || 0;
+          if (quantity > 0) {
+            selections[product.id] = quantity;
+          }
+        }
+      });
+      
+      return selections;
+    }
+
+    // 在庫表示のみ更新
+    function updateStockDisplays() {
+      inventoryData.forEach((product, index) => {
+        const row = document.querySelector(`[data-product-id="${product.id}"]`);
+        if (!row) return;
+        
+        // 在庫バッジを更新
+        const stockBadgeContainer = row.querySelector('td:first-child');
+        let stockBadge = '';
+        
+        if (product.remaining <= 0) {
+          stockBadge = '<span class="badge stock-out">在庫なし</span>';
+        } else if (product.remaining <= 2) {
+          stockBadge = `<span class="badge stock-low">残り${product.remaining}個</span>`;
+        } else {
+          stockBadge = `<span class="badge stock-ok">残り${product.remaining}個</span>`;
+        }
+        
+        // 商品名を保持してバッジのみ更新
+        const productName = stockBadgeContainer.querySelector('strong').textContent;
+        stockBadgeContainer.innerHTML = `
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <strong>${productName}</strong><br>
+              ${stockBadge}
+            </div>
+          </div>
+        `;
+        
+        // 数量選択器の有効/無効を更新
+        const quantityButtons = row.querySelectorAll('.quantity-btn');
+        const quantityInput = row.querySelector('.quantity-input');
+        
+        if (product.remaining <= 0) {
+          quantityButtons.forEach(btn => btn.disabled = true);
+          quantityInput.disabled = true;
+          quantityInput.max = 0;
+          row.style.opacity = '0.5';
+        } else {
+          quantityButtons.forEach(btn => btn.disabled = false);
+          quantityInput.disabled = false;
+          quantityInput.max = Math.min(product.remaining, 10);
+          row.style.opacity = '1';
+        }
+      });
+    }
+
+    // 選択状態を復元
+    function restoreSelections(selections) {
+      Object.keys(selections).forEach(productId => {
+        const productIndex = inventoryData.findIndex(p => p.id === productId);
+        if (productIndex !== -1) {
+          const input = document.getElementById(`product_${productIndex}`);
+          if (input) {
+            const requestedQuantity = selections[productId];
+            const availableQuantity = inventoryData[productIndex].remaining;
+            const actualQuantity = Math.min(requestedQuantity, availableQuantity);
+            
+            input.value = actualQuantity;
+            updateSubtotal(productIndex, actualQuantity);
+            
+            // 行の選択状態を更新
+            const row = document.querySelector(`[data-product-id="${productId}"]`);
+            if (row) {
+              if (actualQuantity > 0) {
+                row.classList.add('selected');
+              } else {
+                row.classList.remove('selected');
+              }
+            }
+          }
+        }
+      });
+      
+      updateTotalPrice();
+      updateSelectedProducts();
+      updateConfirmButton();
+    }
+
+    // 在庫不足の警告をチェック
+    function checkStockWarnings(originalSelections) {
+      const warnings = [];
+      
+      Object.keys(originalSelections).forEach(productId => {
+        const product = inventoryData.find(p => p.id === productId);
+        if (product) {
+          const requestedQuantity = originalSelections[productId];
+          const availableQuantity = product.remaining;
+          
+          if (availableQuantity === 0) {
+            warnings.push(`${product.name}は在庫切れになりました`);
+          } else if (requestedQuantity > availableQuantity) {
+            warnings.push(`${product.name}の在庫が${availableQuantity}個に減少しました`);
+          }
+        }
+      });
+      
+      showStockAlert(warnings);
+    }
+
+    // 在庫アラート表示
+    function showStockAlert(warnings) {
+      const alertDiv = document.getElementById('stock-alert');
+      const messageSpan = document.getElementById('stock-alert-message');
+      
+      if (warnings.length > 0) {
+        messageSpan.innerHTML = warnings.join('<br>');
+        alertDiv.className = 'alert alert-warning';
+        alertDiv.style.display = 'block';
+        
+        // 3秒後に自動で非表示
+        setTimeout(() => {
+          alertDiv.style.display = 'none';
+        }, 5000);
+      } else {
+        alertDiv.style.display = 'none';
+      }
+    }
+
+    // ローディング完了
+    function finishLoading() {
+      const progressBar = document.getElementById('loading-progress');
+      progressBar.style.width = '100%';
+      setTimeout(() => {
+        showFormScreen();
+        updateStep(1);
+      }, 500);
+    }
+
+    // 商品リスト表示（初回のみ）
+    function renderProductList() {
+      const tbody = document.getElementById('products-list');
+      tbody.innerHTML = '';
+      
+      inventoryData.forEach((product, index) => {
+        const row = document.createElement('tr');
+        
+        // 在庫状況に応じたスタイル
+        let stockBadge = '';
+        let rowStyle = '';
+        
+        if (product.remaining <= 0) {
+          stockBadge = '<span class="badge stock-out">在庫なし</span>';
+          rowStyle = 'opacity: 0.5;';
+        } else if (product.remaining <= 2) {
+          stockBadge = `<span class="badge stock-low">残り${product.remaining}個</span>`;
+        } else {
+          stockBadge = `<span class="badge stock-ok">残り${product.remaining}個</span>`;
+        }
+        
+        row.style.cssText = rowStyle;
+        row.classList.add('product-row');
+        row.dataset.productId = product.id;
+        row.dataset.category = categorizeProduct(product.name);
+        
+        row.innerHTML = `
+          <td>
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <strong>${product.name || ''}</strong><br>
+                ${stockBadge}
+              </div>
+            </div>
+          </td>
+          <td><strong>¥${product.price.toLocaleString()}</strong></td>
+          <td>
+            <div class="quantity-selector">
+              <button type="button" class="quantity-btn" onclick="decreaseQuantity(${index})" ${product.remaining <= 0 ? 'disabled' : ''}>
+                <i class="bi bi-dash"></i>
+              </button>
+              <input type="number" class="quantity-input" id="product_${index}" name="product_${index}" 
+                     value="0" min="0" max="${Math.min(product.remaining, 10)}" 
+                     ${product.remaining <= 0 ? 'disabled' : ''} 
+                     onchange="handleQuantityChange(${index}, this.value)">
+              <button type="button" class="quantity-btn" onclick="increaseQuantity(${index})" ${product.remaining <= 0 ? 'disabled' : ''}>
+                <i class="bi bi-plus"></i>
+              </button>
+            </div>
+            <div class="stock-warning" id="warning_${index}"></div>
+          </td>
+          <td><span id="subtotal_${index}" class="fw-bold text-primary">¥0</span></td>
+        `;
+        
+        tbody.appendChild(row);
+      });
+    }
+
+    // 数量変更時のハンドリング（在庫チェック付き）
+    function handleQuantityChange(index, value) {
+      const qty = parseInt(value) || 0;
+      const product = inventoryData[index];
+      
+      // 最大値チェック
+      if (qty > Math.min(product.remaining, 10)) {
+        document.getElementById(`product_${index}`).value = Math.min(product.remaining, 10);
+        return;
+      }
+      
+      // 在庫チェックをスケジュール（連続入力時の負荷軽減）
+      scheduleStockCheck();
+      
+      updateQuantity(index, qty);
+    }
+
+    // 在庫チェックのスケジューリング
+    function scheduleStockCheck() {
+      // 既存のタイムアウトをクリア
+      if (stockCheckTimeout) {
+        clearTimeout(stockCheckTimeout);
+      }
+      
+      // 2秒後に在庫チェックを実行
+      stockCheckTimeout = setTimeout(() => {
+        updateStockStatus();
+      }, 2000);
+    }
+
+    // 商品カテゴリ分類
+    function categorizeProduct(name) {
+      if (name.includes('プレミアム')) return 'premium';
+      if (name.includes('ピザ') || name.includes('フォカッチャ') || name.includes('ピタパン')) return 'pizza';
+      return 'bread';
+    }
+
+    // 数量操作
+    function increaseQuantity(index) {
+      const input = document.getElementById(`product_${index}`);
+      const currentValue = parseInt(input.value) || 0;
+      const maxValue = parseInt(input.max) || 0;
+      
+      if (currentValue < maxValue) {
+        input.value = currentValue + 1;
+        handleQuantityChange(index, input.value);
+      }
+    }
+
+    function decreaseQuantity(index) {
+      const input = document.getElementById(`product_${index}`);
+      const currentValue = parseInt(input.value) || 0;
+      
+      if (currentValue > 0) {
+        input.value = currentValue - 1;
+        handleQuantityChange(index, input.value);
+      }
+    }
+
+    function updateQuantity(index, value) {
+      const qty = parseInt(value) || 0;
+      const product = inventoryData[index];
+      
+      updateSubtotal(index, qty);
+      updateTotalPrice();
+      updateSelectedProducts();
+      updateConfirmButton();
+      
+      // 行のスタイル更新
+      const row = document.querySelector(`[data-product-id="${product.id}"]`);
+      if (qty > 0) {
+        row.classList.add('selected');
+      } else {
+        row.classList.remove('selected');
+      }
+    }
+
+    // 小計更新
+    function updateSubtotal(index, quantity) {
+      const qty = parseInt(quantity) || 0;
+      const product = inventoryData[index];
+      const subtotal = product.price * qty;
+      
+      const subtotalElement = document.getElementById(`subtotal_${index}`);
+      if (subtotalElement) {
+        subtotalElement.textContent = `¥${subtotal.toLocaleString()}`;
+      }
+    }
+
+    // 合計金額更新
+    function updateTotalPrice() {
+      let newTotal = 0;
+      
+      inventoryData.forEach((product, index) => {
+        const input = document.getElementById(`product_${index}`);
+        if (input && !input.disabled) {
+          const quantity = parseInt(input.value) || 0;
+          newTotal += product.price * quantity;
+        }
+      });
+      
+      totalPrice = newTotal;
+      const totalElement = document.getElementById('total-price');
+      if (totalElement) {
+        totalElement.textContent = `¥${totalPrice.toLocaleString()}`;
+      }
+      
+      // プログレスバーの色変更
+      const progressBar = document.getElementById('form-progress');
+      if (totalPrice > 0) {
+        progressBar.classList.add('bg-success');
+        progressBar.classList.remove('bg-primary');
+      } else {
+        progressBar.classList.add('bg-primary');
+        progressBar.classList.remove('bg-success');
+      }
+    }
+
+    // 選択商品更新
+    function updateSelectedProducts() {
+      selectedProducts.clear();
+      
+      inventoryData.forEach((product, index) => {
+        const input = document.getElementById(`product_${index}`);
+        const quantity = parseInt(input?.value || 0);
+        
+        if (quantity > 0) {
+          selectedProducts.set(product.id, {
+            name: product.name,
+            price: product.price,
+            quantity: quantity,
+            subtotal: product.price * quantity
+          });
+        }
+      });
+      
+      updateSelectedSummary();
+    }
+
+    // 選択済み商品サマリー更新
+    function updateSelectedSummary() {
+      const summary = document.getElementById('selected-summary');
+      const itemsDiv = document.getElementById('selected-items');
+      
+      if (selectedProducts.size > 0) {
+        let html = '';
+        selectedProducts.forEach(item => {
+          html += `<span class="badge bg-primary me-2 mb-1">${item.name} ×${item.quantity}</span>`;
+        });
+        itemsDiv.innerHTML = html;
+        summary.style.display = 'block';
+      } else {
+        summary.style.display = 'none';
+      }
+    }
+
+    // 商品検索・フィルター
+    function filterProducts() {
+      const searchTerm = document.getElementById('product-search-input').value.toLowerCase();
+      const rows = document.querySelectorAll('.product-row');
+      
+      rows.forEach(row => {
+        const productName = row.querySelector('strong').textContent.toLowerCase();
+        if (productName.includes(searchTerm)) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    }
+
+    function clearSearch() {
+      document.getElementById('product-search-input').value = '';
+      filterProducts();
+    }
+
+    function filterProductsByCategory(category) {
+      const rows = document.querySelectorAll('.product-row');
+      
+      rows.forEach(row => {
+        if (category === 'all' || row.dataset.category === category) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    }
+
+    // ステップ管理
+    function updateStep(step) {
+      currentStep = step;
+      
+      // ステップ表示更新
+      document.querySelectorAll('.step').forEach((stepEl, index) => {
+        stepEl.classList.remove('active', 'completed');
+        if (index + 1 < step) {
+          stepEl.classList.add('completed');
+        } else if (index + 1 === step) {
+          stepEl.classList.add('active');
+        }
+      });
+      
+      // プログレスバー更新
+      const progress = (step / 4) * 100;
+      const progressBar = document.getElementById('form-progress');
+      if (progressBar) {
+        progressBar.style.width = progress + '%';
+      }
+    }
+
+    function showCustomerInfo() {
+      document.getElementById('customer-info-section').style.display = 'block';
+      document.getElementById('product-selection-section').style.display = 'none';
+      updateStep(1);
+    }
+
+    function showProductSelection() {
+      if (!validateCustomerInfo()) {
+        return;
+      }
+      
+      document.getElementById('customer-info-section').style.display = 'none';
+      document.getElementById('product-selection-section').style.display = 'block';
+      updateStep(2);
+    }
+
+    // バリデーション（修正版）
+    function validateCustomerInfo() {
+      const form = document.getElementById('order-form');
+      const requiredFields = ['lastName', 'firstName', 'email', 'pickupDate', 'pickupTime'];
+      let isValid = true;
+      
+      requiredFields.forEach(fieldName => {
+        const field = form[fieldName];
+        if (!field || !field.value.trim()) {
+          if (field) {
+            field.classList.add('is-invalid');
+            field.classList.remove('is-valid');
+          }
+          isValid = false;
+        } else {
+          field.classList.remove('is-invalid');
+          field.classList.add('is-valid');
+        }
+      });
+      
+      // メールアドレス形式チェック
+      const email = form.email;
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (email && email.value && !emailRegex.test(email.value)) {
+        email.classList.add('is-invalid');
+        email.classList.remove('is-valid');
+        isValid = false;
+      }
+      
+      if (!isValid) {
+        showToast('必須項目を正しく入力してください', 'error');
+      }
+      
+      return isValid;
+    }
+
+    // リアルタイムバリデーション（修正版）
+    function validateFormRealTime() {
+      // 個々のフィールドのバリデーション状態を更新
+      const form = document.getElementById('order-form');
+      const inputs = form.querySelectorAll('input[required], select[required]');
+      
+      inputs.forEach(input => {
+        if (input.value.trim()) {
+          input.classList.remove('is-invalid');
+          input.classList.add('is-valid');
+        } else {
+          input.classList.remove('is-valid');
+          if (input.classList.contains('is-invalid')) {
+            // 既にinvalidクラスがある場合のみ保持
+          }
+        }
+      });
+      
+      updateConfirmButton();
+    }
+
+    // 全体バリデーション（修正版）
+    function validateFullForm() {
+      console.log('🔍 フォーム全体バリデーション開始');
+      
+      // 1. 顧客情報チェック
+      const customerInfoValid = validateCustomerInfo();
+      console.log('顧客情報バリデーション:', customerInfoValid);
+      
+      // 2. 商品選択チェック
+      const hasSelectedProducts = selectedProducts.size > 0;
+      console.log('選択商品数:', selectedProducts.size);
+      console.log('商品選択バリデーション:', hasSelectedProducts);
+      
+      // 3. 最終結果
+      const isValid = customerInfoValid && hasSelectedProducts;
+      console.log('総合バリデーション結果:', isValid);
+      
+      return isValid;
+    }
+
+    function updateConfirmButton() {
+      const button = document.getElementById('confirm-button');
+      if (!button) return;
+      
+      const hasSelectedProducts = selectedProducts.size > 0;
+      const isOnProductPage = document.getElementById('product-selection-section').style.display !== 'none';
+      
+      // 商品選択ページにいる場合のみボタンの状態を更新
+      if (isOnProductPage) {
+        button.disabled = !hasSelectedProducts;
+        
+        if (hasSelectedProducts) {
+          button.innerHTML = `<i class="bi bi-check-circle me-2"></i>予約内容確認（${selectedProducts.size}商品）`;
+        } else {
+          button.innerHTML = '<i class="bi bi-check-circle me-2"></i>商品を選択してください';
+        }
+      }
+    }
+
+    // 最終在庫チェック付き確認画面表示（修正版）
+    function showConfirmation() {
+      console.log('🔄 確認画面表示処理開始');
+      
+      // 最終バリデーション
+      if (!validateFullForm()) {
+        const errorMessages = [];
+        
+        // 顧客情報チェック
+        if (!validateCustomerInfo()) {
+          errorMessages.push('お客様情報に不備があります');
+        }
+        
+        // 商品選択チェック
+        if (selectedProducts.size === 0) {
+          errorMessages.push('商品を1つ以上選択してください');
+        }
+        
+        showToast('入力内容を確認してください:\n' + errorMessages.join('\n'), 'error');
+        return;
+      }
+      
+      // 最終在庫チェック
+      updateStatus('最終在庫確認中', 'loading');
+      
+      google.script.run
+        .withSuccessHandler(function(latestInventory) {
+          // 最新在庫と選択商品を照合
+          const stockErrors = [];
+          const currentSelections = saveCurrentSelections();
+          
+          Object.keys(currentSelections).forEach(productId => {
+            const latestProduct = latestInventory.find(p => p.id === productId);
+            const requestedQuantity = currentSelections[productId];
+            
+            if (!latestProduct || latestProduct.remaining < requestedQuantity) {
+              const productName = inventoryData.find(p => p.id === productId)?.name || 'unknown';
+              stockErrors.push({
+                name: productName,
+                requested: requestedQuantity,
+                available: latestProduct ? latestProduct.remaining : 0
+              });
+            }
+          });
+          
+          if (stockErrors.length > 0) {
+            // 在庫不足エラー
+            let errorMessage = '以下の商品で在庫不足が発生しています：\n\n';
+            stockErrors.forEach(error => {
+              errorMessage += `• ${error.name}: ${error.requested}個 → ${error.available}個に変更\n`;
+            });
+            errorMessage += '\n数量を調整してください。';
+            
+            showToast(errorMessage, 'error');
+            updateStatus('在庫不足', 'error');
+            
+            // 在庫データを更新して表示
+            inventoryData = latestInventory;
+            updateStockDisplays();
+            restoreSelections(currentSelections);
+            
+            return;
+          }
+          
+          // 在庫OK - 確認画面へ
+          proceedToConfirmation();
+          updateStatus('確認画面表示', 'success');
+        })
+        .withFailureHandler(function(error) {
+          console.error('最終在庫チェックエラー:', error);
+          showToast('在庫確認でエラーが発生しました。もう一度お試しください。', 'error');
+          updateStatus('在庫確認エラー', 'error');
+        })
+        .getInventoryDataForForm();
+    }
+
+    // 確認画面表示（在庫チェック後）
+    function proceedToConfirmation() {
+      const form = document.getElementById('order-form');
+      const formData = new FormData(form);
+      
+      // お客様情報
+      document.getElementById('confirm-name').textContent = `${formData.get('lastName')} ${formData.get('firstName')}`;
+      document.getElementById('confirm-email').textContent = formData.get('email');
+      document.getElementById('confirm-pickup').textContent = `${formatDisplayDate(new Date(formData.get('pickupDate')))} ${formData.get('pickupTime')}`;
+      
+      // 注文内容
+      let itemsHtml = '<div class="list-group list-group-flush">';
+      selectedProducts.forEach(item => {
+        itemsHtml += `
+          <div class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+              <strong>${item.name}</strong><br>
+              <small class="text-muted">¥${item.price.toLocaleString()} × ${item.quantity}</small>
+            </div>
+            <strong>¥${item.subtotal.toLocaleString()}</strong>
+          </div>
+        `;
+      });
+      itemsHtml += '</div>';
+      
+      document.getElementById('confirm-items').innerHTML = itemsHtml;
+      document.getElementById('confirm-total').textContent = `¥${totalPrice.toLocaleString()}`;
+      
+      // 備考
+      const note = formData.get('note');
+      if (note) {
+        document.getElementById('confirm-note').textContent = note;
+        document.getElementById('confirm-note-section').style.display = 'block';
+      } else {
+        document.getElementById('confirm-note-section').style.display = 'none';
+      }
+      
+      showConfirmScreen();
+      updateStep(3);
+    }
+
+    // 注文送信
+    function submitOrder() {
+      if (isSubmitting) return;
+      
+      isSubmitting = true;
+      const button = document.getElementById('submit-button');
+      button.disabled = true;
+      button.innerHTML = '<div class="spinner-border spinner-border-sm me-2"></div>送信中...';
+      updateStatus('送信中', 'loading');
+      
+      const formData = collectFormData();
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          isSubmitting = false;
+          if (result && result.success) {
+            showSuccessScreen(result);
+            updateStatus('予約完了', 'success');
+            updateStep(4);
+          } else {
+            showErrorScreen(result ? result.message : '予約の処理に失敗しました');
+            updateStatus('送信エラー', 'error');
+          }
+        })
+        .withFailureHandler(function(error) {
+          isSubmitting = false;
+          showErrorScreen('予約の送信に失敗しました: ' + error);
+          updateStatus('送信エラー', 'error');
+        })
+        .processOrder(formData);
+    }
+
+    // フォームデータ収集
+    function collectFormData() {
+      const form = document.getElementById('order-form');
+      const formData = new FormData(form);
+      const data = {};
+      
+      // 基本情報
+      for (let [key, value] of formData.entries()) {
+        data[key] = value;
+      }
+      
+      // 商品数量
+      inventoryData.forEach((product, index) => {
+        const input = document.getElementById(`product_${index}`);
+        data[`product_${index}`] = parseInt(input?.value || 0);
+      });
+      
+      return data;
+    }
+
+    // 画面切り替え
+    function showScreen(screenId) {
+      document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+      });
+      document.getElementById(screenId).classList.add('active');
+      window.scrollTo(0, 0);
+    }
+
+    function showLoadingScreen() { showScreen('loading-screen'); }
+    function showFormScreen() { showScreen('form-screen'); }
+    function showConfirmScreen() { showScreen('confirm-screen'); }
+    
+    function showSuccessScreen(result) {
+      document.getElementById('success-message').textContent = result.message;
+      
+      if (result.orderDetails) {
+        const details = result.orderDetails;
+        let detailsHtml = `
+          <div class="card">
+            <div class="card-header bg-success text-white">
+              <h6 class="mb-0"><i class="bi bi-receipt me-2"></i>予約詳細</h6>
+            </div>
+            <div class="card-body">
+              <dl class="row mb-0">
+                <dt class="col-sm-4">予約ID</dt>
+                <dd class="col-sm-8"><code>${details.orderId || 'ORD' + Date.now()}</code></dd>
+                <dt class="col-sm-4">お名前</dt>
+                <dd class="col-sm-8">${details.name}</dd>
+                <dt class="col-sm-4">受取日時</dt>
+                <dd class="col-sm-8">${details.pickupDate} ${details.pickupTime}</dd>
+                <dt class="col-sm-4">合計金額</dt>
+                <dd class="col-sm-8"><strong>¥${details.totalPrice.toLocaleString()}</strong></dd>
+              </dl>
+            </div>
+          </div>
+        `;
+        document.getElementById('success-details').innerHTML = detailsHtml;
+      }
+      
+      showScreen('success-screen');
+    }
+    
+    function showErrorScreen(message) {
+      document.getElementById('error-message').textContent = message;
+      showScreen('error-screen');
+    }
+
+    // フォームリセット
+    function resetForm() {
+      document.getElementById('order-form').reset();
+      selectedProducts.clear();
+      totalPrice = 0;
+      currentStep = 1;
+      updateTotalPrice();
+      updateSelectedSummary();
+      generatePickupDates();
+      showCustomerInfo();
+      loadInventoryData(); // 初期データ再読み込み
+      updateStep(1);
+      
+      // バリデーションクラスをリセット
+      document.querySelectorAll('.is-valid, .is-invalid').forEach(el => {
+        el.classList.remove('is-valid', 'is-invalid');
+      });
+    }
+
+    // ステータス更新
+    function updateStatus(message, type) {
+      const status = document.getElementById('status');
+      if (!status) return;
+      
+      let icon = 'bi-wifi';
+      let color = 'rgba(40, 167, 69, 0.9)';
+      
+      switch (type) {
+        case 'loading':
+          icon = 'bi-arrow-clockwise';
+          color = 'rgba(255, 193, 7, 0.9)';
+          break;
+        case 'error':
+          icon = 'bi-exclamation-triangle';
+          color = 'rgba(220, 53, 69, 0.9)';
+          break;
+        case 'success':
+          icon = 'bi-check-circle';
+          color = 'rgba(40, 167, 69, 0.9)';
+          break;
+      }
+      
+      status.innerHTML = `<i class="${icon}"></i> ${message}`;
+      status.style.backgroundColor = color;
+    }
+
+    // トースト表示
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      toast.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show`;
+      toast.style.cssText = 'position: fixed; top: 70px; right: 20px; z-index: 1100; min-width: 300px; white-space: pre-line;';
+      toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+      `;
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        if (toast.parentElement) {
+          toast.remove();
+        }
+      }, type === 'error' ? 8000 : 5000);
+    }
+
+    // ユーティリティ関数
+    function formatDate(date) {
+      return date.getFullYear() + '-' +
+             String(date.getMonth() + 1).padStart(2, '0') + '-' +
+             String(date.getDate()).padStart(2, '0');
+    }
+
+    function formatDisplayDate(date) {
+      return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+    }
+
+    // ページ離脱時の処理
+    window.addEventListener('beforeunload', function() {
+      if (stockCheckTimeout) {
+        clearTimeout(stockCheckTimeout);
+      }
+    });
+
+    // ページの印刷スタイル
+    window.addEventListener('beforeprint', function() {
+      document.querySelectorAll('.btn, .navbar, .status-indicator').forEach(el => {
+        el.style.display = 'none';
+      });
+    });
+
+    window.addEventListener('afterprint', function() {
+      document.querySelectorAll('.btn, .navbar, .status-indicator').forEach(el => {
+        el.style.display = '';
+      });
+    });
+  </script>
+</body>
+</html>
