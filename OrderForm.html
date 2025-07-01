@@ -279,7 +279,7 @@
     }
     
     .fade-in {
-      animation: fadeIn 0.5s ease-in;
+      animation: fadeIn 0.5s cubic-bezier(.4,0,.2,1);
     }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(20px); }
@@ -409,6 +409,43 @@
       justify-content: center;
       color: white;
     }
+    
+    /* スケルトンスクリーン */
+    .skeleton {
+      background: linear-gradient(90deg, #f0e6d6 25%, #f7f3ed 50%, #f0e6d6 75%);
+      background-size: 200% 100%;
+      animation: skeleton-loading 1.2s infinite linear;
+      border-radius: 6px;
+      height: 20px;
+      margin-bottom: 8px;
+    }
+    .skeleton-title { width: 60%; height: 20px; }
+    .skeleton-badge { width: 30%; height: 16px; }
+    @keyframes skeleton-loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    /* 選択中商品サマリーの固定表示 */
+    #fixed-summary {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100vw;
+      background: #fff8f0;
+      box-shadow: 0 -2px 10px rgba(139,69,19,0.08);
+      z-index: 2000;
+      padding: 0.5rem 1rem;
+      display: none;
+    }
+    #fixed-summary .badge { font-size: 1rem; }
+    /* ボタンアニメーション強化 */
+    .btn-primary, .btn-success, .btn-secondary {
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-primary:active, .btn-success:active, .btn-secondary:active {
+      transform: scale(0.97);
+      box-shadow: 0 2px 8px rgba(139,69,19,0.15);
+    }
   </style>
 </head>
 <body>
@@ -480,20 +517,20 @@
               <div class="row mb-3">
                 <div class="col-md-6 mb-3">
                   <label for="lastName" class="form-label"><i class="bi bi-person me-1"></i>氏名（姓）<span class="text-danger">*</span></label>
-                  <input type="text" class="form-control" id="lastName" name="lastName" required placeholder="山田" autocomplete="family-name">
+                  <input type="text" class="form-control" id="lastName" name="lastName" required placeholder="例：山田" autocomplete="family-name">
                   <div class="invalid-feedback">姓を入力してください</div>
                   <div class="valid-feedback">正しく入力されています</div>
                 </div>
                 <div class="col-md-6 mb-3">
                   <label for="firstName" class="form-label"><i class="bi bi-person me-1"></i>氏名（名）<span class="text-danger">*</span></label>
-                  <input type="text" class="form-control" id="firstName" name="firstName" required placeholder="太郎" autocomplete="given-name">
+                  <input type="text" class="form-control" id="firstName" name="firstName" required placeholder="例：太郎" autocomplete="given-name">
                   <div class="invalid-feedback">名を入力してください</div>
                   <div class="valid-feedback">正しく入力されています</div>
                 </div>
               </div>
               <div class="mb-3">
                 <label for="email" class="form-label"><i class="bi bi-envelope me-1"></i>メールアドレス<span class="text-danger">*</span></label>
-                <input type="email" class="form-control" id="email" name="email" required placeholder="example@email.com" autocomplete="email">
+                <input type="email" class="form-control" id="email" name="email" required placeholder="例：taro.yamada@email.com" autocomplete="email">
                 <div class="invalid-feedback">有効なメールアドレスを入力してください</div>
                 <div class="valid-feedback">正しく入力されています</div>
                 <div class="form-text">確認メールがこちらのアドレスに送信されます</div>
@@ -595,7 +632,21 @@
                       <th>小計</th>
                     </tr>
                   </thead>
-                  <tbody id="products-list"></tbody>
+                  <tbody id="products-list">
+                    <!-- スケルトン表示（初期表示時のみ） -->
+                    <tr class="skeleton-row">
+                      <td colspan="4">
+                        <div class="skeleton skeleton-title"></div>
+                        <div class="skeleton skeleton-badge"></div>
+                      </td>
+                    </tr>
+                    <tr class="skeleton-row">
+                      <td colspan="4">
+                        <div class="skeleton skeleton-title"></div>
+                        <div class="skeleton skeleton-badge"></div>
+                      </td>
+                    </tr>
+                  </tbody>
                   <tfoot>
                     <tr class="table-warning">
                       <th colspan="3" class="text-end fs-5">合計</th>
@@ -774,6 +825,12 @@
       <p>心を込めて手作りするこだわりのパンをお届けします</p>
       <p><small>ご不明な点がございましたら、お気軽にお問い合わせください</small></p>
     </div>
+  </div>
+  
+  <!-- 選択中商品サマリーの固定表示 -->
+  <div id="fixed-summary">
+    <span id="fixed-summary-items"></span>
+    <span class="float-end fw-bold">合計: <span id="fixed-summary-total">¥0</span></span>
   </div>
   
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -1074,59 +1131,63 @@
     // 商品リスト表示（初回のみ）
     function renderProductList() {
       const tbody = document.getElementById('products-list');
-      tbody.innerHTML = '';
-      
-      inventoryData.forEach((product, index) => {
-        const row = document.createElement('tr');
-        
-        // 在庫状況に応じたスタイル
-        let stockBadge = '';
-        let rowStyle = '';
-        
-        if (product.remaining <= 0) {
-          stockBadge = '<span class="badge stock-out">在庫なし</span>';
-          rowStyle = 'opacity: 0.5;';
-        } else if (product.remaining <= 2) {
-          stockBadge = `<span class="badge stock-low">残り${product.remaining}個</span>`;
-        } else {
-          stockBadge = `<span class="badge stock-ok">残り${product.remaining}個</span>`;
-        }
-        
-        row.style.cssText = rowStyle;
-        row.classList.add('product-row');
-        row.dataset.productId = product.id;
-        row.dataset.category = categorizeProduct(product.name);
-        
-        row.innerHTML = `
-          <td>
-            <div class="d-flex justify-content-between align-items-start">
-              <div>
-                <strong>${product.name || ''}</strong><br>
-                ${stockBadge}
+      // スケルトンを一旦表示
+      tbody.innerHTML = `
+        <tr class="skeleton-row"><td colspan="4"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-badge"></div></td></tr>
+        <tr class="skeleton-row"><td colspan="4"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-badge"></div></td></tr>
+      `;
+      // データ取得後に本物のリストを描画
+      setTimeout(() => {
+        tbody.innerHTML = '';
+        inventoryData.forEach((product, index) => {
+          const row = document.createElement('tr');
+          // 在庫状況に応じたスタイル
+          let stockBadge = '';
+          let rowStyle = '';
+          if (product.remaining <= 0) {
+            stockBadge = '<span class="badge stock-out">在庫なし</span>';
+            rowStyle = 'opacity: 0.5;';
+          } else if (product.remaining <= 2) {
+            stockBadge = `<span class="badge stock-low">残り${product.remaining}個</span>`;
+          } else {
+            stockBadge = `<span class="badge stock-ok">残り${product.remaining}個</span>`;
+          }
+          row.style.cssText = rowStyle;
+          row.classList.add('product-row');
+          row.dataset.productId = product.id;
+          row.dataset.category = categorizeProduct(product.name);
+          // 商品画像追加
+          row.innerHTML = `
+            <td>
+              <div class="d-flex align-items-center">
+                <img src="${product.imageUrl || 'https://placehold.jp/60x60.png'}" alt="${product.name}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;margin-right:10px;">
+                <div>
+                  <strong>${product.name || ''}</strong><br>
+                  ${stockBadge}
+                </div>
               </div>
-            </div>
-          </td>
-          <td><strong>¥${product.price.toLocaleString()}</strong></td>
-          <td>
-            <div class="quantity-selector">
-              <button type="button" class="quantity-btn" onclick="decreaseQuantity(${index})" ${product.remaining <= 0 ? 'disabled' : ''}>
-                <i class="bi bi-dash"></i>
-              </button>
-              <input type="number" class="quantity-input" id="product_${index}" name="product_${index}" 
-                     value="0" min="0" max="${Math.min(product.remaining, 10)}" 
-                     ${product.remaining <= 0 ? 'disabled' : ''} 
-                     onchange="handleQuantityChange(${index}, this.value)">
-              <button type="button" class="quantity-btn" onclick="increaseQuantity(${index})" ${product.remaining <= 0 ? 'disabled' : ''}>
-                <i class="bi bi-plus"></i>
-              </button>
-            </div>
-            <div class="stock-warning" id="warning_${index}"></div>
-          </td>
-          <td><span id="subtotal_${index}" class="fw-bold text-primary">¥0</span></td>
-        `;
-        
-        tbody.appendChild(row);
-      });
+            </td>
+            <td><strong>¥${product.price.toLocaleString()}</strong></td>
+            <td>
+              <div class="quantity-selector">
+                <button type="button" class="quantity-btn" onclick="decreaseQuantity(${index})" ${product.remaining <= 0 ? 'disabled' : ''}>
+                  <i class="bi bi-dash"></i>
+                </button>
+                <input type="number" class="quantity-input" id="product_${index}" name="product_${index}" 
+                       value="0" min="0" max="${Math.min(product.remaining, 10)}" 
+                       ${product.remaining <= 0 ? 'disabled' : ''} 
+                       onchange="handleQuantityChange(${index}, this.value)">
+                <button type="button" class="quantity-btn" onclick="increaseQuantity(${index})" ${product.remaining <= 0 ? 'disabled' : ''}>
+                  <i class="bi bi-plus"></i>
+                </button>
+              </div>
+              <div class="stock-warning" id="warning_${index}"></div>
+            </td>
+            <td><span id="subtotal_${index}" class="fw-bold text-primary">¥0</span></td>
+          `;
+          tbody.appendChild(row);
+        });
+      }, 500); // デモ用に0.5秒遅延
     }
 
     // 数量変更時のハンドリング（在庫チェック付き）
@@ -1272,13 +1333,31 @@
     function updateSelectedSummary() {
       const summary = document.getElementById('selected-summary');
       const itemsDiv = document.getElementById('selected-items');
-      
       if (selectedProducts.size > 0) {
         let html = '';
         selectedProducts.forEach(item => {
           html += `<span class="badge bg-primary me-2 mb-1">${item.name} ×${item.quantity}</span>`;
         });
         itemsDiv.innerHTML = html;
+        summary.style.display = 'block';
+      } else {
+        summary.style.display = 'none';
+      }
+      updateFixedSummary();
+    }
+
+    // 選択中商品サマリーの固定表示
+    function updateFixedSummary() {
+      const summary = document.getElementById('fixed-summary');
+      const itemsSpan = document.getElementById('fixed-summary-items');
+      const totalSpan = document.getElementById('fixed-summary-total');
+      if (selectedProducts.size > 0) {
+        let html = '';
+        selectedProducts.forEach(item => {
+          html += `<span class="badge bg-primary me-2 mb-1">${item.name} ×${item.quantity}</span>`;
+        });
+        itemsSpan.innerHTML = html;
+        totalSpan.textContent = `¥${totalPrice.toLocaleString()}`;
         summary.style.display = 'block';
       } else {
         summary.style.display = 'none';
