@@ -337,6 +337,36 @@
             </div>
           </div>
 
+          <!-- 今後1週間の予約状況 -->
+          <div class="card mb-4">
+            <div class="card-header">
+              <i class="bi bi-calendar-week me-2"></i>今後1週間の予約状況
+            </div>
+            <div class="card-body" id="week-reservations">
+              <div class="text-center text-muted">読み込み中...</div>
+            </div>
+          </div>
+
+          <!-- 週間予約詳細モーダル -->
+          <div class="modal fade" id="weekDetailModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title" id="weekDetailModalTitle">予約詳細</h5>
+                  <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                  <div id="week-detail-content">
+                    <!-- 動的に生成 -->
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- 在庫アラート -->
           <div class="row mb-4">
             <div class="col-12">
@@ -504,7 +534,7 @@
                     </tr>
                   </thead>
                   <tbody id="inventory-table-body">
-                    <tr><td colspan="8" class="text-center">読み込み中...</td></tr>
+                    <tr><td colspan="8" class="text-center text-muted py-4">在庫データがありません</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -579,7 +609,7 @@
                     </tr>
                   </thead>
                   <tbody id="menu-table-body">
-                    <tr><td colspan="7" class="text-center">読み込み中...</td></tr>
+                    <tr><td colspan="7" class="text-center text-muted py-4">メニューデータがありません</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -789,6 +819,61 @@
       
       // 最近の予約
       renderRecentOrders(orders.slice(0, 10));
+
+      // 今後1週間の予約状況
+      renderWeekReservations();
+    }
+
+    // 今後1週間の予約状況を集計・表示
+    function getNext7DaysReservations(orders) {
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const result = [];
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + i);
+        const dateStr = date.toISOString().split('T')[0];
+        const dayOrders = orders.filter(order => order.pickupDate === dateStr);
+        result.push({ date: dateStr, count: dayOrders.length, orders: dayOrders });
+      }
+      return result;
+    }
+
+    function renderWeekReservations() {
+      const weekData = getNext7DaysReservations(currentData.orders || []);
+      let html = '<table class="table table-sm mb-0"><thead><tr><th>日付</th><th>予約数</th></tr></thead><tbody>';
+      weekData.forEach(d => {
+        // 日付を日本語表記に
+        const jpDate = new Date(d.date).toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit', weekday: 'short' });
+        html += `<tr style="cursor:pointer" onclick="showWeekDetail('${d.date}')"><td>${jpDate}</td><td>${d.count}</td></tr>`;
+      });
+      html += '</tbody></table>';
+      document.getElementById('week-reservations').innerHTML = html;
+    }
+
+    // 週間予約詳細モーダル表示
+    function showWeekDetail(dateStr) {
+      const orders = (currentData.orders || []).filter(order => order.pickupDate === dateStr);
+      const modalTitle = document.getElementById('weekDetailModalTitle');
+      const content = document.getElementById('week-detail-content');
+      const jpDate = new Date(dateStr).toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit', weekday: 'short' });
+      modalTitle.textContent = `${jpDate} の予約詳細（${orders.length}件）`;
+      if (orders.length === 0) {
+        content.innerHTML = '<div class="text-center text-muted">予約はありません</div>';
+      } else {
+        let html = '<div class="table-responsive"><table class="table table-bordered table-sm"><thead><tr><th>顧客名</th><th>受取時間</th><th>商品</th><th>金額</th><th>状態</th></tr></thead><tbody>';
+        orders.forEach(order => {
+          const customerName = `${order.lastName || ''} ${order.firstName || ''}`;
+          const items = (order.items || []).map(item => `${item.name}×${item.quantity}`).join('<br>');
+          const statusBadge = order.isDelivered
+            ? '<span class="badge bg-success">引渡済</span>'
+            : '<span class="badge bg-warning">未引渡</span>';
+          html += `<tr><td>${customerName}</td><td>${order.pickupTime || ''}</td><td>${items}</td><td>¥${(order.totalPrice || 0).toLocaleString()}</td><td>${statusBadge}</td></tr>`;
+        });
+        html += '</tbody></table></div>';
+        content.innerHTML = html;
+      }
+      new bootstrap.Modal(document.getElementById('weekDetailModal')).show();
     }
 
     // 在庫アラート表示

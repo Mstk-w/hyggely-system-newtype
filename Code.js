@@ -605,13 +605,23 @@ function getOrderList() {
     
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
+      // pickupDateを必ずyyyy-MM-dd形式に整形
+      let pickupDate = row[4];
+      if (pickupDate instanceof Date) {
+        pickupDate = Utilities.formatDate(pickupDate, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+      } else if (typeof pickupDate === 'string' && pickupDate.match(/^\d{4}\/\d{1,2}\/\d{1,2}$/)) {
+        // 例: 2024/06/01 → 2024-06-01
+        const parts = pickupDate.split('/');
+        pickupDate = `${parts[0]}-${('0'+parts[1]).slice(-2)}-${('0'+parts[2]).slice(-2)}`;
+      }
+
       const order = {
         rowIndex: i + 1,
         timestamp: row[0],
         lastName: row[1],
         firstName: row[2],
         email: row[3],
-        pickupDate: row[4],
+        pickupDate: pickupDate,
         pickupTime: row[5],
         items: [],
         note: row[row.length - 4] || '',
