@@ -249,7 +249,7 @@
   <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
     <div class="container-fluid">
       <a class="navbar-brand" href="#">
-        <i class="bi bi-shop me-2"></i>Hyggely管理ダッシュボード v5.0
+        <i class="bi bi-shop me-2"></i>Hyggely管理ダッシュボード v5.2
       </a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
         <span class="navbar-toggler-icon"></span>
@@ -322,7 +322,12 @@
             </div>
             <div class="quick-stat border-success">
               <i class="bi bi-currency-yen text-success" style="font-size: 2rem;"></i>
-              <p class="stat-number text-success" id="today-revenue">¥0</p>
+              <p class="stat-number text-success" id="month-revenue">¥0</p>
+              <p class="mb-0 fw-semibold">今月の売上</p>
+            </div>
+            <div class="quick-stat border-info">
+              <i class="bi bi-cash text-info" style="font-size: 2rem;"></i>
+              <p class="stat-number text-info" id="today-revenue">¥0</p>
               <p class="mb-0 fw-semibold">今日の売上</p>
             </div>
             <div class="quick-stat border-danger">
@@ -330,9 +335,9 @@
               <p class="stat-number text-danger" id="alert-count">0</p>
               <p class="mb-0 fw-semibold">在庫アラート</p>
             </div>
-            <div class="quick-stat border-info">
-              <i class="bi bi-graph-up text-info" style="font-size: 2rem;"></i>
-              <p class="stat-number text-info" id="total-products">0</p>
+            <div class="quick-stat border-secondary">
+              <i class="bi bi-graph-up text-secondary" style="font-size: 2rem;"></i>
+              <p class="stat-number text-secondary" id="total-products">0</p>
               <p class="mb-0 fw-semibold">商品数</p>
             </div>
           </div>
@@ -457,11 +462,12 @@
                       <th>商品</th>
                       <th>金額</th>
                       <th>状態</th>
+                      <th>予約ID</th>
                       <th>操作</th>
                     </tr>
                   </thead>
                   <tbody id="orders-table-body">
-                    <tr><td colspan="7" class="text-center">読み込み中...</td></tr>
+                    <tr><td colspan="8" class="text-center">読み込み中...</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -754,7 +760,7 @@
 
     // 初期化
     document.addEventListener('DOMContentLoaded', function() {
-      console.log('🚀 管理者ダッシュボード起動 v5.0');
+      console.log('🚀 管理者ダッシュボード起動 v5.2');
       
       // タブ切り替えイベント
       document.querySelectorAll('[data-bs-toggle="pill"]').forEach(tab => {
@@ -780,7 +786,7 @@
       }
     }
 
-    // 概要データ読み込み
+    // 🔧 修正版：概要データ読み込み
     function loadOverviewData() {
       showLoading('overview');
       updateStatus('統計データ読み込み中', 'loading');
@@ -801,7 +807,7 @@
       });
     }
 
-    // 概要表示
+    // 🔧 修正版：概要表示
     function renderOverview() {
       const stats = currentData.stats;
       const inventory = currentData.inventory;
@@ -810,6 +816,7 @@
       // 統計表示
       document.getElementById('today-orders').textContent = stats.todayOrdersCount || 0;
       document.getElementById('pending-orders').textContent = stats.pendingOrdersCount || 0;
+      document.getElementById('month-revenue').textContent = '¥' + (stats.monthRevenue || 0).toLocaleString();
       document.getElementById('today-revenue').textContent = '¥' + (stats.todayRevenue || 0).toLocaleString();
       document.getElementById('alert-count').textContent = (stats.outOfStockCount || 0) + (stats.lowStockCount || 0);
       document.getElementById('total-products').textContent = stats.totalProducts || 0;
@@ -843,7 +850,6 @@
       const weekData = getNext7DaysReservations(currentData.orders || []);
       let html = '<table class="table table-sm mb-0"><thead><tr><th>日付</th><th>予約数</th></tr></thead><tbody>';
       weekData.forEach(d => {
-        // 日付を日本語表記に
         const jpDate = new Date(d.date).toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit', weekday: 'short' });
         html += `<tr style="cursor:pointer" onclick="showWeekDetail('${d.date}')"><td>${jpDate}</td><td>${d.count}</td></tr>`;
       });
@@ -861,14 +867,14 @@
       if (orders.length === 0) {
         content.innerHTML = '<div class="text-center text-muted">予約はありません</div>';
       } else {
-        let html = '<div class="table-responsive"><table class="table table-bordered table-sm"><thead><tr><th>顧客名</th><th>受取時間</th><th>商品</th><th>金額</th><th>状態</th></tr></thead><tbody>';
+        let html = '<div class="table-responsive"><table class="table table-bordered table-sm"><thead><tr><th>顧客名</th><th>受取時間</th><th>商品</th><th>金額</th><th>状態</th><th>予約ID</th></tr></thead><tbody>';
         orders.forEach(order => {
           const customerName = `${order.lastName || ''} ${order.firstName || ''}`;
           const items = (order.items || []).map(item => `${item.name}×${item.quantity}`).join('<br>');
           const statusBadge = order.isDelivered
             ? '<span class="badge bg-success">引渡済</span>'
             : '<span class="badge bg-warning">未引渡</span>';
-          html += `<tr><td>${customerName}</td><td>${order.pickupTime || ''}</td><td>${items}</td><td>¥${(order.totalPrice || 0).toLocaleString()}</td><td>${statusBadge}</td></tr>`;
+          html += `<tr><td>${customerName}</td><td>${order.pickupTime || ''}</td><td>${items}</td><td>¥${(order.totalPrice || 0).toLocaleString()}</td><td>${statusBadge}</td><td><code>${order.orderId || ''}</code></td></tr>`;
         });
         html += '</tbody></table></div>';
         content.innerHTML = html;
@@ -952,7 +958,8 @@
                 </p>
                 <p class="card-text">
                   <strong>¥${(order.totalPrice || 0).toLocaleString()}</strong><br>
-                  <small class="text-muted">${(order.items || []).length}商品</small>
+                  <small class="text-muted">${(order.items || []).length}商品</small><br>
+                  <small class="text-muted">ID: ${order.orderId || ''}</small>
                 </p>
               </div>
             </div>
@@ -983,7 +990,7 @@
         });
     }
 
-    // 予約一覧表示
+    // 🔧 修正版：予約一覧表示
     function renderOrders(page = 1) {
       const tbody = document.getElementById('orders-table-body');
       let orders = currentData.orders || [];
@@ -1023,7 +1030,7 @@
       const pageOrders = orders.slice(startIndex, endIndex);
 
       if (pageOrders.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">予約がありません</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">予約がありません</td></tr>';
         return;
       }
 
@@ -1057,6 +1064,7 @@
             <td class="order-items">${itemsSummary}</td>
             <td><strong>¥${(order.totalPrice || 0).toLocaleString()}</strong></td>
             <td>${statusBadge}</td>
+            <td><code>${order.orderId || ''}</code></td>
             <td>
               <div class="action-buttons">
                 <button class="btn btn-outline-primary btn-sm" onclick="showOrderDetail('${order.orderId}')">
@@ -1490,6 +1498,7 @@
       }
 
       const button = event.target;
+      const originalText = button.innerHTML;
       button.disabled = true;
       button.innerHTML = '更新中...';
       updateStatus('在庫更新中', 'loading');
@@ -1513,7 +1522,7 @@
         })
         .finally(() => {
           button.disabled = false;
-          button.innerHTML = '更新';
+          button.innerHTML = originalText;
         });
     }
 

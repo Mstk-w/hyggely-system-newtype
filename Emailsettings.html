@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Hyggelyカンパーニュ専門店 メール設定</title>
+  <title>Hyggelyカンパーニュ専門店 メール設定 v5.2</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <style>
@@ -283,6 +283,37 @@
       right: 20px;
       z-index: 1000;
     }
+
+    /* ヘルプテキスト強化 */
+    .help-text {
+      background: #f8f9fa;
+      border-left: 4px solid #8B4513;
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 0 8px 8px 0;
+    }
+
+    /* プレビューボタン強化 */
+    .btn-preview {
+      background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%);
+      border: none;
+      color: white;
+    }
+    .btn-preview:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 15px rgba(23, 162, 184, 0.3);
+    }
+
+    /* 成功表示の強化 */
+    .save-success {
+      background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+      animation: saveSuccess 0.5s ease;
+    }
+    @keyframes saveSuccess {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
   </style>
 </head>
 <body>
@@ -295,7 +326,7 @@
   <nav class="navbar navbar-expand-lg navbar-dark">
     <div class="container-fluid">
       <a class="navbar-brand" href="#">
-        <i class="bi bi-envelope-gear me-2"></i>Hyggelyメール設定 v5.0
+        <i class="bi bi-envelope-gear me-2"></i>Hyggelyメール設定 v5.2
       </a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
         <span class="navbar-toggler-icon"></span>
@@ -381,6 +412,12 @@
               <i class="bi bi-gear me-2"></i>システム設定
             </div>
             <div class="card-body">
+              <div class="help-text">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>AK列対応版（v5.2）</strong><br>
+                スプレッドシートのAK列が予約IDになりました。メール本文で{orderId}変数を使用して予約IDを表示できます。
+              </div>
+
               <div class="row">
                 <div class="col-md-6 mb-3">
                   <div class="form-check form-switch">
@@ -443,13 +480,13 @@
                   <div class="col-md-6">
                     <div class="template-card" data-template="customer-default" onclick="selectTemplate('customer', 'default')">
                       <h6>標準テンプレート</h6>
-                      <p class="mb-0 text-muted small">基本的な予約確認メール</p>
+                      <p class="mb-0 text-muted small">基本的な予約確認メール（予約ID付き）</p>
                     </div>
                   </div>
                   <div class="col-md-6">
                     <div class="template-card" data-template="customer-detailed" onclick="selectTemplate('customer', 'detailed')">
                       <h6>詳細テンプレート</h6>
-                      <p class="mb-0 text-muted small">詳細な情報を含む確認メール</p>
+                      <p class="mb-0 text-muted small">詳細な情報を含む確認メール（予約ID付き）</p>
                     </div>
                   </div>
                 </div>
@@ -465,6 +502,9 @@
                   <span class="variable-tag" onclick="insertVariable('customer-body', '{firstName}')">
                     <i class="bi bi-person me-1"></i>{firstName}
                   </span>
+                  <span class="variable-tag" onclick="insertVariable('customer-body', '{email}')">
+                    <i class="bi bi-envelope me-1"></i>{email}
+                  </span>
                   <span class="variable-tag" onclick="insertVariable('customer-body', '{orderItems}')">
                     <i class="bi bi-basket me-1"></i>{orderItems}
                   </span>
@@ -475,7 +515,7 @@
                     <i class="bi bi-calendar me-1"></i>{pickupDateTime}
                   </span>
                   <span class="variable-tag" onclick="insertVariable('customer-body', '{orderId}')">
-                    <i class="bi bi-hash me-1"></i>{orderId}
+                    <i class="bi bi-hash me-1"></i>{orderId} <span class="badge bg-success ms-1">NEW</span>
                   </span>
                 </div>
               </div>
@@ -496,7 +536,7 @@
                   <i class="bi bi-file-text me-1"></i>メール本文 <span class="text-danger">*</span>
                 </label>
                 <div class="position-relative">
-                  <textarea class="form-control" id="customer-body" rows="8"
+                  <textarea class="form-control" id="customer-body" rows="10"
                             placeholder="メール本文を入力してください" required></textarea>
                   <div class="char-counter" id="customer-body-counter">0/2000</div>
                 </div>
@@ -504,7 +544,7 @@
 
               <div class="d-flex justify-content-between flex-wrap gap-2">
                 <div>
-                  <button type="button" class="btn btn-secondary me-2" onclick="previewCustomerEmail()">
+                  <button type="button" class="btn btn-preview me-2" onclick="previewCustomerEmail()">
                     <i class="bi bi-eye me-1"></i>プレビュー
                   </button>
                   <button type="button" class="btn btn-info me-2" onclick="sendTestEmail('customer')">
@@ -538,13 +578,13 @@
                   <div class="col-md-6">
                     <div class="template-card" data-template="admin-default" onclick="selectTemplate('admin', 'default')">
                       <h6>標準テンプレート</h6>
-                      <p class="mb-0 text-muted small">基本的な新規予約通知</p>
+                      <p class="mb-0 text-muted small">基本的な新規予約通知（予約ID付き）</p>
                     </div>
                   </div>
                   <div class="col-md-6">
                     <div class="template-card" data-template="admin-detailed" onclick="selectTemplate('admin', 'detailed')">
                       <h6>詳細テンプレート</h6>
-                      <p class="mb-0 text-muted small">詳細な予約情報を含む通知</p>
+                      <p class="mb-0 text-muted small">詳細な予約情報を含む通知（予約ID付き）</p>
                     </div>
                   </div>
                 </div>
@@ -573,7 +613,7 @@
                     <i class="bi bi-calendar me-1"></i>{pickupDateTime}
                   </span>
                   <span class="variable-tag" onclick="insertVariable('admin-body', '{orderId}')">
-                    <i class="bi bi-hash me-1"></i>{orderId}
+                    <i class="bi bi-hash me-1"></i>{orderId} <span class="badge bg-success ms-1">NEW</span>
                   </span>
                 </div>
               </div>
@@ -594,7 +634,7 @@
                   <i class="bi bi-file-text me-1"></i>メール本文 <span class="text-danger">*</span>
                 </label>
                 <div class="position-relative">
-                  <textarea class="form-control" id="admin-body" rows="8"
+                  <textarea class="form-control" id="admin-body" rows="10"
                             placeholder="メール本文を入力してください" required></textarea>
                   <div class="char-counter" id="admin-body-counter">0/2000</div>
                 </div>
@@ -602,7 +642,7 @@
 
               <div class="d-flex justify-content-between flex-wrap gap-2">
                 <div>
-                  <button type="button" class="btn btn-secondary me-2" onclick="previewAdminEmail()">
+                  <button type="button" class="btn btn-preview me-2" onclick="previewAdminEmail()">
                     <i class="bi bi-eye me-1"></i>プレビュー
                   </button>
                   <button type="button" class="btn btn-info me-2" onclick="sendTestEmail('admin')">
@@ -633,7 +673,7 @@
             <div class="card-body">
               <div class="alert alert-info">
                 <i class="bi bi-info-circle me-2"></i>
-                実際のメール送信をテストできます。設定したテンプレートでサンプルデータを使用してメールを送信します。
+                実際のメール送信をテストできます。設定したテンプレートでサンプルデータ（予約ID付き）を使用してメールを送信します。
               </div>
               
               <div class="row">
@@ -659,7 +699,7 @@
               <!-- サンプルデータ表示 -->
               <div class="card bg-light mb-3">
                 <div class="card-header">
-                  <i class="bi bi-database me-2"></i>テスト用サンプルデータ
+                  <i class="bi bi-database me-2"></i>テスト用サンプルデータ（v5.2対応）
                 </div>
                 <div class="card-body">
                   <div class="row">
@@ -667,7 +707,8 @@
                       <small>
                         <strong>顧客情報:</strong><br>
                         山田 太郎 (yamada@example.com)<br>
-                        受取日時: 2024年12月25日 14:00
+                        受取日時: 2025年01月15日 14:00<br>
+                        <span class="badge bg-success">予約ID: ORD250115140030</span>
                       </small>
                     </div>
                     <div class="col-md-6">
@@ -706,6 +747,13 @@
               <i class="bi bi-shield-check me-2"></i>設定のバックアップと復元
             </div>
             <div class="card-body">
+              <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <strong>v5.2対応について</strong><br>
+                このバージョンではAK列が予約IDに変更されています。古いバージョンの設定ファイルをインポートする際は、
+                テンプレートに{orderId}変数が正しく含まれているか確認してください。
+              </div>
+
               <div class="backup-section">
                 <h6><i class="bi bi-download me-2"></i>設定のエクスポート</h6>
                 <p class="text-muted">現在のメール設定をJSONファイルとしてダウンロードできます。</p>
@@ -729,7 +777,7 @@
                 <h6><i class="bi bi-arrow-clockwise me-2"></i>工場出荷時設定に戻す</h6>
                 <p class="text-muted text-danger">
                   <i class="bi bi-exclamation-triangle me-1"></i>
-                  すべてのメール設定がデフォルト値にリセットされます。この操作は取り消せません。
+                  すべてのメール設定がデフォルト値（v5.2対応版）にリセットされます。この操作は取り消せません。
                 </p>
                 <button type="button" class="btn btn-danger" onclick="resetToFactory()">
                   <i class="bi bi-exclamation-triangle me-1"></i>工場出荷時設定に戻す
@@ -764,7 +812,7 @@
     let currentSettings = {};
     let templateLibrary = {};
 
-    // デフォルトテンプレート
+    // デフォルトテンプレート（v5.2対応版）
     const defaultTemplates = {
       customer: {
         default: {
@@ -790,7 +838,7 @@
 
     // 初期化
     document.addEventListener('DOMContentLoaded', function() {
-      console.log('📧 メール設定画面起動 v5.0');
+      console.log('📧 メール設定画面起動 v5.2 - AK列対応版');
       loadEmailSettings();
       setupEventListeners();
       updateStatus('システム起動完了', 'success');
@@ -870,7 +918,7 @@
         .getEmailSettings();
     }
 
-    // デフォルト設定取得
+    // デフォルト設定取得（v5.2対応版）
     function getDefaultSettings() {
       return {
         adminEmail: 'hyggely2021@gmail.com',
@@ -906,7 +954,7 @@
     function updateStats() {
       // 実際の統計データを取得する場合は、Google Apps Scriptから取得
       document.getElementById('emails-sent-today').textContent = '0'; // 実装予定
-      document.getElementById('total-templates').textContent = '2';
+      document.getElementById('total-templates').textContent = '4'; // v5.2で4種類のテンプレート
       document.getElementById('last-test-status').textContent = '未実行';
       document.getElementById('system-status').textContent = currentSettings.emailEnabled ? '有効' : '無効';
     }
@@ -928,6 +976,12 @@
         card.classList.remove('active');
       });
       document.querySelector(`[data-template="${type}-${template}"]`).classList.add('active');
+
+      // 文字数カウンター更新
+      ['customer-subject', 'customer-body', 'admin-subject', 'admin-body'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) element.dispatchEvent(new Event('input'));
+      });
 
       showToast(`${type === 'customer' ? '顧客' : '管理者'}テンプレートを適用しました`, 'success');
     }
@@ -954,7 +1008,7 @@
       textarea.dispatchEvent(new Event('input'));
     }
 
-    // プレビュー機能
+    // プレビュー機能（v5.2対応版）
     function previewCustomerEmail() {
       const subject = document.getElementById('customer-subject').value;
       const body = document.getElementById('customer-body').value;
@@ -965,8 +1019,8 @@
         email: 'yamada@example.com',
         orderItems: '・プレミアムカンパーニュ　1個　¥1,000\n・レーズン&クルミ　2個　¥2,400',
         totalPrice: '3,400',
-        pickupDateTime: '2024年12月25日 14:00',
-        orderId: 'ORD20241225001'
+        pickupDateTime: '2025年01月15日 14:00',
+        orderId: 'ORD250115140030' // v5.2対応の予約ID
       };
 
       const previewSubject = replaceVariables(subject, sampleData);
@@ -975,7 +1029,7 @@
       const preview = document.getElementById('customer-preview');
       preview.innerHTML = `
         <div class="preview-header">
-          <i class="bi bi-envelope me-2"></i>顧客確認メールプレビュー
+          <i class="bi bi-envelope me-2"></i>顧客確認メールプレビュー（v5.2対応）
         </div>
         <div class="email-preview">
           <strong>件名:</strong> ${escapeHtml(previewSubject)}<br><br>
@@ -997,8 +1051,8 @@
         email: 'yamada@example.com',
         orderItems: '・プレミアムカンパーニュ　1個　¥1,000\n・レーズン&クルミ　2個　¥2,400',
         totalPrice: '3,400',
-        pickupDateTime: '2024年12月25日 14:00',
-        orderId: 'ORD20241225001'
+        pickupDateTime: '2025年01月15日 14:00',
+        orderId: 'ORD250115140030' // v5.2対応の予約ID
       };
 
       const previewSubject = replaceVariables(subject, sampleData);
@@ -1007,7 +1061,7 @@
       const preview = document.getElementById('admin-preview');
       preview.innerHTML = `
         <div class="preview-header">
-          <i class="bi bi-envelope-exclamation me-2"></i>管理者通知メールプレビュー
+          <i class="bi bi-envelope-exclamation me-2"></i>管理者通知メールプレビュー（v5.2対応）
         </div>
         <div class="email-preview">
           <strong>件名:</strong> ${escapeHtml(previewSubject)}<br><br>
@@ -1033,7 +1087,7 @@
       // 実際のテストメール送信処理（実装予定）
       setTimeout(() => {
         updateStatus('送信完了', 'success');
-        showToast(`${type === 'customer' ? '顧客' : '管理者'}テストメールを送信しました`, 'success');
+        showToast(`${type === 'customer' ? '顧客' : '管理者'}テストメールを送信しました（予約ID付き）`, 'success');
       }, 2000);
     }
 
@@ -1054,7 +1108,7 @@
         const results = document.getElementById('test-results');
         const message = document.getElementById('test-result-message');
         
-        message.textContent = `${testEmail} にテストメール（${testType}）を送信しました。`;
+        message.textContent = `${testEmail} にテストメール（${testType}・予約ID付き）を送信しました。`;
         results.style.display = 'block';
         results.scrollIntoView({ behavior: 'smooth' });
         
@@ -1079,7 +1133,7 @@
 
     // テンプレートリセット
     function resetCustomerTemplate() {
-      if (confirm('顧客確認メールテンプレートをデフォルトに戻しますか？')) {
+      if (confirm('顧客確認メールテンプレートをデフォルト（v5.2対応版）に戻しますか？')) {
         selectTemplate('customer', 'default');
         document.getElementById('customer-preview').style.display = 'none';
         showToast('顧客メールテンプレートをデフォルトに戻しました', 'success');
@@ -1087,7 +1141,7 @@
     }
 
     function resetAdminTemplate() {
-      if (confirm('管理者通知メールテンプレートをデフォルトに戻しますか？')) {
+      if (confirm('管理者通知メールテンプレートをデフォルト（v5.2対応版）に戻しますか？')) {
         selectTemplate('admin', 'default');
         document.getElementById('admin-preview').style.display = 'none';
         showToast('管理者メールテンプレートをデフォルトに戻しました', 'success');
@@ -1134,16 +1188,16 @@
         .withSuccessHandler(function(result) {
           if (result && result.success) {
             currentSettings = settings;
-            showToast(result.message || '設定を保存しました', 'success');
+            showToast(result.message || '設定を保存しました（v5.2対応版）', 'success');
             updateStatus('保存完了', 'success');
             
             // 成功表示
             button.classList.remove('btn-success');
-            button.classList.add('btn-outline-success');
+            button.classList.add('save-success');
             button.innerHTML = '<i class="bi bi-check-circle me-2"></i>保存完了';
             
             setTimeout(() => {
-              button.classList.remove('btn-outline-success');
+              button.classList.remove('save-success');
               button.classList.add('btn-success');
               button.innerHTML = originalText;
               button.disabled = false;
@@ -1192,10 +1246,21 @@
         }
       });
 
+      // v5.2対応チェック：{orderId}変数が含まれているか
+      const customerBody = document.getElementById('customer-body').value;
+      const adminBody = document.getElementById('admin-body').value;
+      
+      if (!customerBody.includes('{orderId}')) {
+        errors.push('顧客メール本文に{orderId}変数の追加を推奨します（v5.2対応）');
+      }
+      if (!adminBody.includes('{orderId}')) {
+        errors.push('管理者メール本文に{orderId}変数の追加を推奨します（v5.2対応）');
+      }
+
       setTimeout(() => {
         if (isValid) {
           updateStatus('検証完了', 'success');
-          showToast('すべての設定が正常です', 'success');
+          showToast('すべての設定が正常です（v5.2対応）', 'success');
         } else {
           updateStatus('検証エラー', 'error');
           showToast('設定に問題があります:\n' + errors.join('\n'), 'error');
@@ -1208,7 +1273,7 @@
       const settings = {
         ...currentSettings,
         exportDate: new Date().toISOString(),
-        version: '5.0.0'
+        version: '5.2.0' // v5.2対応版
       };
 
       const dataStr = JSON.stringify(settings, null, 2);
@@ -1216,10 +1281,10 @@
       
       const link = document.createElement('a');
       link.href = URL.createObjectURL(dataBlob);
-      link.download = `hyggely-email-settings-${new Date().toISOString().split('T')[0]}.json`;
+      link.download = `hyggely-email-settings-v5.2-${new Date().toISOString().split('T')[0]}.json`;
       link.click();
 
-      showToast('設定をエクスポートしました', 'success');
+      showToast('設定をエクスポートしました（v5.2対応版）', 'success');
     }
 
     function importSettings() {
@@ -1235,6 +1300,12 @@
       reader.onload = function(e) {
         try {
           const settings = JSON.parse(e.target.result);
+          
+          // バージョンチェック
+          if (settings.version && settings.version !== '5.2.0') {
+            showToast(`異なるバージョン（${settings.version}）の設定ファイルです。{orderId}変数が正しく含まれているか確認してください。`, 'warning');
+          }
+          
           populateForm(settings);
           showToast('設定をインポートしました', 'success');
         } catch (error) {
@@ -1245,9 +1316,9 @@
     }
 
     function resetToFactory() {
-      if (confirm('本当にすべての設定を工場出荷時の状態に戻しますか？\n\nこの操作は取り消せません。')) {
+      if (confirm('本当にすべての設定を工場出荷時の状態（v5.2対応版）に戻しますか？\n\nこの操作は取り消せません。')) {
         populateForm(getDefaultSettings());
-        showToast('工場出荷時設定に戻しました', 'warning');
+        showToast('工場出荷時設定に戻しました（v5.2対応版）', 'warning');
       }
     }
 
