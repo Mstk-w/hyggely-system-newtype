@@ -94,16 +94,48 @@
       vertical-align: middle;
     }
     
-    /* タブ */
+    /* タブ - 大幅改善 */
+    .nav-pills {
+      background: white;
+      border-radius: 12px;
+      padding: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      margin-bottom: 2rem;
+    }
     .nav-pills .nav-link {
       color: #6c757d;
       border-radius: 8px;
-      margin-right: 10px;
-      padding: 12px 20px;
-      font-weight: 600;
+      margin-right: 8px;
+      padding: 15px 25px;
+      font-weight: 700;
+      transition: all 0.3s ease;
+      border: 2px solid transparent;
+      font-size: 1rem;
+      text-transform: none;
+      position: relative;
+    }
+    .nav-pills .nav-link:hover {
+      color: #8B4513;
+      background: rgba(139, 69, 19, 0.1);
+      border-color: rgba(139, 69, 19, 0.2);
+      transform: translateY(-2px);
     }
     .nav-pills .nav-link.active {
       background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+      color: white;
+      border-color: #8B4513;
+      box-shadow: 0 4px 15px rgba(139, 69, 19, 0.3);
+    }
+    .nav-pills .nav-link.active::after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 8px;
+      height: 8px;
+      background: #8B4513;
+      border-radius: 50%;
     }
     
     /* ローディング */
@@ -161,6 +193,27 @@
       font-size: 0.75rem;
       border-radius: 4px;
     }
+
+    /* 予約一覧の専用スタイル */
+    .reservation-row {
+      transition: all 0.3s ease;
+    }
+    .reservation-row:hover {
+      background-color: rgba(139, 69, 19, 0.05);
+    }
+    .reservation-row.delivered {
+      background-color: rgba(40, 167, 69, 0.1);
+    }
+    .reservation-row.pending {
+      background-color: rgba(255, 193, 7, 0.1);
+    }
+    
+    /* 商品リスト */
+    .order-items {
+      max-height: 100px;
+      overflow-y: auto;
+      font-size: 0.8rem;
+    }
     
     /* レスポンシブ最適化 */
     @media (max-width: 768px) {
@@ -190,20 +243,7 @@
       50% { opacity: 0.7; transform: scale(1.05); }
     }
     
-    /* カスタム要素 */
-    .order-items {
-      max-height: 100px;
-      overflow-y: auto;
-      font-size: 0.8rem;
-    }
-    
-    .product-form {
-      background: #f8f9fa;
-      border-radius: 8px;
-      padding: 1rem;
-      margin-bottom: 1rem;
-    }
-    
+    /* 統計グリッド */
     .quick-stats {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -219,23 +259,19 @@
       border: 2px solid #e9ecef;
     }
     
-    .inventory-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 1rem;
+    /* 並び替えボタン */
+    .sort-button {
+      background: none;
+      border: none;
+      color: #6c757d;
+      margin-left: 5px;
+      cursor: pointer;
     }
-    
-    .inventory-item {
-      background: white;
-      border-radius: 8px;
-      padding: 1rem;
-      border: 2px solid #e9ecef;
-      transition: all 0.3s ease;
+    .sort-button:hover {
+      color: #8B4513;
     }
-    
-    .inventory-item:hover {
-      border-color: #8B4513;
-      box-shadow: 0 4px 15px rgba(139, 69, 19, 0.1);
+    .sort-button.active {
+      color: #8B4513;
     }
   </style>
 </head>
@@ -267,6 +303,9 @@
           </a>
           <a class="nav-link" href="#" onclick="exportData()">
             <i class="bi bi-download me-1"></i>エクスポート
+          </a>
+          <a class="nav-link" href="#" onclick="debugSystem()">
+            <i class="bi bi-bug me-1"></i>デバッグ
           </a>
         </div>
       </div>
@@ -342,33 +381,66 @@
             </div>
           </div>
 
-          <!-- 今後1週間の予約状況 -->
+          <!-- 予約一覧 -->
           <div class="card mb-4">
-            <div class="card-header">
-              <i class="bi bi-calendar-week me-2"></i>今後1週間の予約状況
-            </div>
-            <div class="card-body" id="week-reservations">
-              <div class="text-center text-muted">読み込み中...</div>
-            </div>
-          </div>
-
-          <!-- 週間予約詳細モーダル -->
-          <div class="modal fade" id="weekDetailModal" tabindex="-1">
-            <div class="modal-dialog modal-lg">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <h5 class="modal-title" id="weekDetailModalTitle">予約詳細</h5>
-                  <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <span><i class="bi bi-calendar3 me-2"></i>予約一覧（日付昇順）</span>
+              <div>
+                <div class="btn-group btn-group-sm me-2" role="group">
+                  <input type="radio" class="btn-check" name="status-filter" id="filter-all" value="all" checked>
+                  <label class="btn btn-outline-secondary" for="filter-all">すべて</label>
+                  
+                  <input type="radio" class="btn-check" name="status-filter" id="filter-pending" value="pending">
+                  <label class="btn btn-outline-warning" for="filter-pending">未引渡</label>
+                  
+                  <input type="radio" class="btn-check" name="status-filter" id="filter-delivered" value="delivered">
+                  <label class="btn btn-outline-success" for="filter-delivered">引渡済</label>
                 </div>
-                <div class="modal-body">
-                  <div id="week-detail-content">
-                    <!-- 動的に生成 -->
-                  </div>
-                </div>
-                <div class="modal-footer">
-                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
-                </div>
+                <button class="btn btn-sm btn-outline-primary" onclick="loadOverviewData()">
+                  <i class="bi bi-arrow-clockwise"></i>
+                </button>
               </div>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="table table-hover">
+                  <thead>
+                    <tr>
+                      <th>
+                        受取日時
+                        <button class="sort-button" data-sort="pickupDate" onclick="sortReservations('pickupDate')">
+                          <i class="bi bi-arrow-up-down"></i>
+                        </button>
+                      </th>
+                      <th>お客様</th>
+                      <th>商品</th>
+                      <th>
+                        金額
+                        <button class="sort-button" data-sort="totalPrice" onclick="sortReservations('totalPrice')">
+                          <i class="bi bi-arrow-up-down"></i>
+                        </button>
+                      </th>
+                      <th>状態</th>
+                      <th>予約ID</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="reservations-table-body">
+                    <tr>
+                      <td colspan="7" class="text-center py-4">
+                        <div class="spinner-border spinner-border-sm me-2"></div>
+                        予約データを読み込んでいます...
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              
+              <!-- ページネーション -->
+              <nav aria-label="予約一覧ページネーション">
+                <ul class="pagination justify-content-center" id="reservations-pagination">
+                </ul>
+              </nav>
             </div>
           </div>
 
@@ -384,22 +456,6 @@
                 </div>
                 <div class="card-body">
                   <div id="stock-alerts">
-                    <div class="text-center text-muted">読み込み中...</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 最近の予約 -->
-          <div class="row">
-            <div class="col-12">
-              <div class="card">
-                <div class="card-header">
-                  <i class="bi bi-clock-history me-2"></i>最近の予約（直近10件）
-                </div>
-                <div class="card-body">
-                  <div id="recent-orders">
                     <div class="text-center text-muted">読み込み中...</div>
                   </div>
                 </div>
@@ -467,7 +523,12 @@
                     </tr>
                   </thead>
                   <tbody id="orders-table-body">
-                    <tr><td colspan="8" class="text-center">読み込み中...</td></tr>
+                    <tr>
+                      <td colspan="8" class="text-center py-4">
+                        <div class="spinner-border spinner-border-sm me-2"></div>
+                        予約データを読み込んでいます...
+                      </td>
+                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -756,11 +817,24 @@
     let currentData = { stats: {}, orders: [], inventory: [], products: [] };
     let updateInterval;
     let currentOrderPage = 1;
+    let currentReservationPage = 1;
     const ordersPerPage = 20;
+    const reservationsPerPage = 10;
+    let currentSortField = 'pickupDate';
+    let currentSortDirection = 'asc';
+    let currentStatusFilter = 'all';
 
     // 初期化
     document.addEventListener('DOMContentLoaded', function() {
       console.log('🚀 管理者ダッシュボード起動 v5.2');
+      
+      // Google Apps Scriptの利用可能性をチェック
+      if (typeof google === 'undefined' || typeof google.script === 'undefined') {
+        console.error('❌ Google Apps Scriptが利用できません');
+        showError('overview', 'Google Apps Scriptとの接続に失敗しました。ページを再読み込みしてください。');
+        updateStatus('接続エラー', 'error');
+        return;
+      }
       
       // タブ切り替えイベント
       document.querySelectorAll('[data-bs-toggle="pill"]').forEach(tab => {
@@ -770,10 +844,20 @@
         });
       });
 
+      // ステータスフィルターイベント
+      document.querySelectorAll('input[name="status-filter"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+          currentStatusFilter = this.value;
+          renderReservations(1);
+        });
+      });
+
       // 初期データ読み込み
-      loadTabData('overview');
-      startAutoUpdate();
-      updateStatus('ダッシュボード起動完了', 'success');
+      setTimeout(() => {
+        loadTabData('overview');
+        startAutoUpdate();
+        updateStatus('ダッシュボード起動完了', 'success');
+      }, 1000); // 1秒後に開始（初期化完了を待つ）
     });
 
     // タブデータ読み込み
@@ -786,100 +870,308 @@
       }
     }
 
-    // 🔧 修正版：概要データ読み込み
+    // 概要データ読み込み
     function loadOverviewData() {
       showLoading('overview');
       updateStatus('統計データ読み込み中', 'loading');
+      
+      console.log('🔄 概要データ読み込み開始');
       
       Promise.all([
         callGoogleScript('getDashboardStats'),
         callGoogleScript('getInventoryDataForForm'),
         callGoogleScript('getOrderList')
       ]).then(([stats, inventory, orders]) => {
-        currentData = { stats: stats || {}, inventory: inventory || [], orders: orders || [] };
+        console.log('✅ データ取得完了:', { 
+          stats: stats || {}, 
+          inventoryCount: (inventory || []).length, 
+          ordersCount: (orders || []).length 
+        });
+        
+        currentData = { 
+          stats: stats || {}, 
+          inventory: inventory || [], 
+          orders: orders || [] 
+        };
+        
         renderOverview();
         hideLoading('overview');
         updateStatus('更新完了', 'success');
+        
+        // デバッグ情報をコンソールに出力
+        console.log('📊 現在のデータ状況:', currentData);
+        
       }).catch(error => {
-        console.error('概要データ取得エラー:', error);
-        showError('overview', '統計データの取得に失敗しました');
+        console.error('❌ 概要データ取得エラー:', error);
+        showError('overview', '統計データの取得に失敗しました: ' + error.toString());
         updateStatus('取得エラー', 'error');
+        
+        // エラー時もデフォルトデータで表示
+        currentData = { stats: {}, inventory: [], orders: [] };
+        renderOverview();
+        hideLoading('overview');
       });
     }
 
-    // 🔧 修正版：概要表示
+    // 概要表示
     function renderOverview() {
-      const stats = currentData.stats;
-      const inventory = currentData.inventory;
-      const orders = currentData.orders;
+      const stats = currentData.stats || {};
+      const inventory = currentData.inventory || [];
+      const orders = currentData.orders || [];
 
-      // 統計表示
+      console.log('📊 概要表示開始:', {
+        statsKeys: Object.keys(stats),
+        inventoryCount: inventory.length,
+        ordersCount: orders.length
+      });
+
+      // 統計表示（デフォルト値を確実に設定）
       document.getElementById('today-orders').textContent = stats.todayOrdersCount || 0;
       document.getElementById('pending-orders').textContent = stats.pendingOrdersCount || 0;
       document.getElementById('month-revenue').textContent = '¥' + (stats.monthRevenue || 0).toLocaleString();
       document.getElementById('today-revenue').textContent = '¥' + (stats.todayRevenue || 0).toLocaleString();
       document.getElementById('alert-count').textContent = (stats.outOfStockCount || 0) + (stats.lowStockCount || 0);
-      document.getElementById('total-products').textContent = stats.totalProducts || 0;
+      document.getElementById('total-products').textContent = stats.totalProducts || inventory.length || 0;
 
       // 在庫アラート
       renderStockAlerts(inventory);
       
-      // 最近の予約
-      renderRecentOrders(orders.slice(0, 10));
-
-      // 今後1週間の予約状況
-      renderWeekReservations();
+      // 予約一覧を表示
+      renderReservations(1);
+      
+      console.log('✅ 概要表示完了');
     }
 
-    // 今後1週間の予約状況を集計・表示
-    function getNext7DaysReservations(orders) {
-      const today = new Date();
-      today.setHours(0,0,0,0);
-      const result = [];
-      for (let i = 0; i < 7; i++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() + i);
-        const dateStr = date.toISOString().split('T')[0];
-        const dayOrders = orders.filter(order => order.pickupDate === dateStr);
-        result.push({ date: dateStr, count: dayOrders.length, orders: dayOrders });
-      }
-      return result;
-    }
+    // 予約一覧表示（日付昇順）
+    function renderReservations(page = 1) {
+      const tbody = document.getElementById('reservations-table-body');
+      let orders = [...(currentData.orders || [])];
 
-    function renderWeekReservations() {
-      const weekData = getNext7DaysReservations(currentData.orders || []);
-      let html = '<table class="table table-sm mb-0"><thead><tr><th>日付</th><th>予約数</th></tr></thead><tbody>';
-      weekData.forEach(d => {
-        const jpDate = new Date(d.date).toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit', weekday: 'short' });
-        html += `<tr style="cursor:pointer" onclick="showWeekDetail('${d.date}')"><td>${jpDate}</td><td>${d.count}</td></tr>`;
-      });
-      html += '</tbody></table>';
-      document.getElementById('week-reservations').innerHTML = html;
-    }
+      console.log(`🔄 予約一覧表示開始: ${orders.length}件の予約データ`);
 
-    // 週間予約詳細モーダル表示
-    function showWeekDetail(dateStr) {
-      const orders = (currentData.orders || []).filter(order => order.pickupDate === dateStr);
-      const modalTitle = document.getElementById('weekDetailModalTitle');
-      const content = document.getElementById('week-detail-content');
-      const jpDate = new Date(dateStr).toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit', weekday: 'short' });
-      modalTitle.textContent = `${jpDate} の予約詳細（${orders.length}件）`;
+      // データが空の場合
       if (orders.length === 0) {
-        content.innerHTML = '<div class="text-center text-muted">予約はありません</div>';
-      } else {
-        let html = '<div class="table-responsive"><table class="table table-bordered table-sm"><thead><tr><th>顧客名</th><th>受取時間</th><th>商品</th><th>金額</th><th>状態</th><th>予約ID</th></tr></thead><tbody>';
-        orders.forEach(order => {
-          const customerName = `${order.lastName || ''} ${order.firstName || ''}`;
-          const items = (order.items || []).map(item => `${item.name}×${item.quantity}`).join('<br>');
-          const statusBadge = order.isDelivered
-            ? '<span class="badge bg-success">引渡済</span>'
-            : '<span class="badge bg-warning">未引渡</span>';
-          html += `<tr><td>${customerName}</td><td>${order.pickupTime || ''}</td><td>${items}</td><td>¥${(order.totalPrice || 0).toLocaleString()}</td><td>${statusBadge}</td><td><code>${order.orderId || ''}</code></td></tr>`;
-        });
-        html += '</tbody></table></div>';
-        content.innerHTML = html;
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4"><i class="bi bi-inbox me-2"></i>予約データがありません<br><small class="text-muted">新しい予約が入ると、ここに表示されます</small></td></tr>';
+        document.getElementById('reservations-pagination').innerHTML = '';
+        return;
       }
-      new bootstrap.Modal(document.getElementById('weekDetailModal')).show();
+
+      // ステータスフィルター適用
+      if (currentStatusFilter === 'delivered') {
+        orders = orders.filter(order => order.isDelivered);
+      } else if (currentStatusFilter === 'pending') {
+        orders = orders.filter(order => !order.isDelivered);
+      }
+
+      console.log(`📊 フィルター適用後: ${orders.length}件 (${currentStatusFilter})`);
+
+      // ソート適用
+      orders.sort((a, b) => {
+        let aValue, bValue;
+        
+        switch (currentSortField) {
+          case 'pickupDate':
+            // 受取日時でソート（日付 + 時間）
+            try {
+              aValue = new Date(`${a.pickupDate} ${a.pickupTime}`);
+              bValue = new Date(`${b.pickupDate} ${b.pickupTime}`);
+              // 無効な日付の場合は遠い未来に設定
+              if (isNaN(aValue.getTime())) aValue = new Date('2099-12-31');
+              if (isNaN(bValue.getTime())) bValue = new Date('2099-12-31');
+            } catch (e) {
+              aValue = new Date('2099-12-31');
+              bValue = new Date('2099-12-31');
+            }
+            break;
+          case 'totalPrice':
+            aValue = a.totalPrice || 0;
+            bValue = b.totalPrice || 0;
+            break;
+          default:
+            aValue = a[currentSortField] || '';
+            bValue = b[currentSortField] || '';
+        }
+        
+        if (currentSortDirection === 'asc') {
+          return aValue > bValue ? 1 : -1;
+        } else {
+          return aValue < bValue ? 1 : -1;
+        }
+      });
+
+      console.log(`📊 ソート完了: ${currentSortField} ${currentSortDirection}`);
+
+      // ページネーション
+      const totalPages = Math.ceil(orders.length / reservationsPerPage);
+      const startIndex = (page - 1) * reservationsPerPage;
+      const endIndex = startIndex + reservationsPerPage;
+      const pageOrders = orders.slice(startIndex, endIndex);
+
+      if (pageOrders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4"><i class="bi bi-search me-2"></i>条件に一致する予約がありません<br><small class="text-muted">フィルターを変更してみてください</small></td></tr>';
+        document.getElementById('reservations-pagination').innerHTML = '';
+        return;
+      }
+
+      let html = '';
+      pageOrders.forEach(order => {
+        const customerName = `${order.lastName || ''} ${order.firstName || ''}`.trim() || '名前未設定';
+        const pickupDateTime = `${order.pickupDate || ''} ${order.pickupTime || ''}`.trim() || '日時未設定';
+        
+        // 商品情報の表示改善
+        let itemsSummary = '';
+        const items = order.items || [];
+        if (items.length === 0) {
+          itemsSummary = '<span class="text-muted">商品情報なし</span>';
+        } else if (items.length <= 2) {
+          itemsSummary = items.map(item => `${item.name} ×${item.quantity}`).join('<br>');
+        } else {
+          itemsSummary = items.slice(0, 2).map(item => `${item.name} ×${item.quantity}`).join('<br>');
+          itemsSummary += `<br><small class="text-muted">他${items.length - 2}商品</small>`;
+        }
+
+        const statusBadge = order.isDelivered
+          ? '<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>引渡済</span>'
+          : '<span class="badge bg-warning"><i class="bi bi-clock me-1"></i>未引渡</span>';
+
+        const rowClass = order.isDelivered ? 'reservation-row delivered' : 'reservation-row pending';
+
+        // 受取日時の色分け（今日・明日・それ以降）
+        let dateClass = '';
+        try {
+          const pickupDate = new Date(order.pickupDate);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          pickupDate.setHours(0, 0, 0, 0);
+          
+          if (pickupDate.getTime() === today.getTime()) {
+            dateClass = 'text-danger fw-bold'; // 今日は赤
+          } else if (pickupDate.getTime() === today.getTime() + 86400000) {
+            dateClass = 'text-warning fw-bold'; // 明日は黄
+          }
+        } catch (e) {
+          console.warn('日付解析エラー:', order.pickupDate);
+        }
+
+        html += `
+          <tr class="${rowClass}">
+            <td><span class="${dateClass}">${pickupDateTime}</span></td>
+            <td>
+              <strong>${customerName}</strong><br>
+              <small class="text-muted">${order.email || 'メール未設定'}</small>
+            </td>
+            <td class="order-items">${itemsSummary}</td>
+            <td><strong>¥${(order.totalPrice || 0).toLocaleString()}</strong></td>
+            <td>${statusBadge}</td>
+            <td><code class="small">${order.orderId || '未設定'}</code></td>
+            <td>
+              <div class="action-buttons">
+                <button class="btn btn-outline-primary btn-sm" onclick="showOrderDetail('${order.orderId || ''}')">
+                  <i class="bi bi-eye"></i> 詳細
+                </button>
+                <button class="btn btn-${order.isDelivered ? 'outline-secondary' : 'success'} btn-sm" 
+                        onclick="toggleDeliveryStatus(${order.rowIndex || 0}, ${!order.isDelivered})"
+                        ${!order.rowIndex ? 'disabled' : ''}>
+                  <i class="bi bi-${order.isDelivered ? 'arrow-left' : 'check'}"></i> 
+                  ${order.isDelivered ? '戻す' : '完了'}
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = html;
+
+      // ページネーション表示
+      renderReservationsPagination(totalPages, page);
+      
+      console.log(`✅ 予約一覧表示完了: ${pageOrders.length}件表示`);
+    }
+
+    // 予約一覧ページネーション
+    function renderReservationsPagination(totalPages, currentPage) {
+      const pagination = document.getElementById('reservations-pagination');
+      
+      let html = '';
+      
+      if (totalPages > 1) {
+        // 前のページ
+        html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+          <a class="page-link" href="#" onclick="renderReservations(${currentPage - 1})">&laquo;</a>
+        </li>`;
+        
+        // ページ番号
+        for (let i = 1; i <= totalPages; i++) {
+          if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+            html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+              <a class="page-link" href="#" onclick="renderReservations(${i})">${i}</a>
+            </li>`;
+          } else if (i === currentPage - 3 || i === currentPage + 3) {
+            html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+          }
+        }
+        
+        // 次のページ
+        html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+          <a class="page-link" href="#" onclick="renderReservations(${currentPage + 1})">&raquo;</a>
+        </li>`;
+      }
+      
+      pagination.innerHTML = html;
+    }
+
+    // ソート機能
+    function sortReservations(field) {
+      if (currentSortField === field) {
+        currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        currentSortField = field;
+        currentSortDirection = 'asc';
+      }
+      
+      // ソートボタンの状態更新
+      document.querySelectorAll('.sort-button').forEach(btn => {
+        btn.classList.remove('active');
+        const icon = btn.querySelector('i');
+        icon.className = 'bi bi-arrow-up-down';
+      });
+      
+      const activeBtn = document.querySelector(`[data-sort="${field}"]`);
+      activeBtn.classList.add('active');
+      const icon = activeBtn.querySelector('i');
+      icon.className = currentSortDirection === 'asc' ? 'bi bi-sort-up' : 'bi bi-sort-down';
+      
+      renderReservations(1);
+    }
+
+    // 引渡状態切り替え
+    function toggleDeliveryStatus(rowIndex, isDelivered) {
+      const button = event.target.closest('button');
+      const originalHTML = button.innerHTML;
+      button.disabled = true;
+      button.innerHTML = '処理中...';
+      updateStatus('状態更新中', 'loading');
+
+      callGoogleScript('updateDeliveryStatus', rowIndex, isDelivered)
+        .then(result => {
+          if (result.success) {
+            showToast(result.message, 'success');
+            loadOverviewData(); // データを再読み込み
+            updateStatus('更新完了', 'success');
+          } else {
+            showToast(result.message, 'error');
+            updateStatus('更新エラー', 'error');
+          }
+        })
+        .catch(error => {
+          showToast('引渡状態の更新に失敗しました: ' + error, 'error');
+          updateStatus('更新エラー', 'error');
+        })
+        .finally(() => {
+          button.disabled = false;
+          button.innerHTML = originalHTML;
+        });
     }
 
     // 在庫アラート表示
@@ -929,48 +1221,6 @@
       container.innerHTML = html;
     }
 
-    // 最近の予約表示
-    function renderRecentOrders(orders) {
-      const container = document.getElementById('recent-orders');
-      
-      if (!orders || orders.length === 0) {
-        container.innerHTML = '<div class="text-center text-muted">最近の予約はありません</div>';
-        return;
-      }
-
-      let html = '<div class="row">';
-      orders.forEach(order => {
-        const customerName = `${order.lastName || ''} ${order.firstName || ''}`;
-        const statusBadge = order.isDelivered
-          ? '<span class="badge bg-success">引渡済</span>'
-          : '<span class="badge bg-warning">未引渡</span>';
-        
-        html += `
-          <div class="col-md-6 mb-3">
-            <div class="card h-100" style="cursor: pointer;" onclick="showOrderDetail('${order.orderId}')">
-              <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                  <h6 class="card-title mb-0">${customerName}</h6>
-                  ${statusBadge}
-                </div>
-                <p class="card-text text-muted small mb-2">
-                  ${order.pickupDate || ''} ${order.pickupTime || ''}
-                </p>
-                <p class="card-text">
-                  <strong>¥${(order.totalPrice || 0).toLocaleString()}</strong><br>
-                  <small class="text-muted">${(order.items || []).length}商品</small><br>
-                  <small class="text-muted">ID: ${order.orderId || ''}</small>
-                </p>
-              </div>
-            </div>
-          </div>
-        `;
-      });
-      html += '</div>';
-      
-      container.innerHTML = html;
-    }
-
     // 予約データ読み込み
     function loadOrdersData() {
       showLoading('orders');
@@ -990,7 +1240,7 @@
         });
     }
 
-    // 🔧 修正版：予約一覧表示
+    // 予約一覧表示（既存の機能を保持）
     function renderOrders(page = 1) {
       const tbody = document.getElementById('orders-table-body');
       let orders = currentData.orders || [];
@@ -1087,7 +1337,7 @@
       renderOrdersPagination(totalPages, page);
     }
 
-    // ページネーション表示
+    // ページネーション表示（既存）
     function renderOrdersPagination(totalPages, currentPage) {
       const pagination = document.getElementById('orders-pagination');
       
@@ -1119,7 +1369,7 @@
       pagination.innerHTML = html;
     }
 
-    // 予約詳細表示
+    // 既存の関数（予約詳細表示、在庫管理、メニュー管理など）
     function showOrderDetail(orderId) {
       updateStatus('予約詳細取得中', 'loading');
       
@@ -1141,7 +1391,6 @@
         });
     }
 
-    // 予約詳細表示（モーダル内）
     function renderOrderDetail(order) {
       const content = document.getElementById('order-detail-content');
       
@@ -1236,7 +1485,6 @@
         });
     }
 
-    // 在庫一覧表示
     function renderInventory() {
       const tbody = document.getElementById('inventory-table-body');
       const inventory = currentData.inventory;
@@ -1302,7 +1550,6 @@
         });
     }
 
-    // メニュー一覧表示
     function renderMenu() {
       const tbody = document.getElementById('menu-table-body');
       const products = currentData.products;
@@ -1345,94 +1592,20 @@
       tbody.innerHTML = html;
     }
 
-    // 新商品追加
-    function addNewProduct() {
-      const name = document.getElementById('new-product-name').value;
-      const price = parseInt(document.getElementById('new-product-price').value);
-      const order = parseInt(document.getElementById('new-product-order').value) || 999;
-      const stock = parseInt(document.getElementById('new-product-stock').value) || 10;
+    // 引渡状態切り替え（注文管理タブ用）
+    function toggleDelivery(rowIndex, isDelivered) {
+      const button = event.target;
+      const originalHTML = button.innerHTML;
+      button.disabled = true;
+      button.innerHTML = '処理中...';
+      updateStatus('状態更新中', 'loading');
 
-      if (!name || !price || price < 0) {
-        showToast('商品名と価格は必須です', 'error');
-        return;
-      }
-
-      const productData = {
-        name: name,
-        price: price,
-        order: order,
-        initialStock: stock,
-        minStock: 3
-      };
-
-      updateStatus('商品追加中', 'loading');
-
-      callGoogleScript('addProduct', productData)
+      callGoogleScript('updateDeliveryStatus', rowIndex, isDelivered)
         .then(result => {
           if (result.success) {
             showToast(result.message, 'success');
-            document.getElementById('add-product-form').reset();
-            loadMenuData();
-            loadInventoryData(); // 在庫データも更新
-            updateStatus('追加完了', 'success');
-          } else {
-            showToast(result.message, 'error');
-            updateStatus('追加エラー', 'error');
-          }
-        })
-        .catch(error => {
-          console.error('商品追加エラー:', error);
-          showToast('商品の追加に失敗しました', 'error');
-          updateStatus('追加エラー', 'error');
-        });
-    }
-
-    // 商品編集
-    function editProduct(productId) {
-      const product = currentData.products.find(p => p.id === productId);
-      if (!product) {
-        showToast('商品が見つかりません', 'error');
-        return;
-      }
-
-      document.getElementById('edit-product-id').value = product.id;
-      document.getElementById('edit-product-name').value = product.name;
-      document.getElementById('edit-product-price').value = product.price;
-      document.getElementById('edit-product-order').value = product.order;
-      document.getElementById('edit-product-enabled').checked = product.enabled;
-
-      new bootstrap.Modal(document.getElementById('editProductModal')).show();
-    }
-
-    // 商品編集保存
-    function saveProductEdit() {
-      const productId = document.getElementById('edit-product-id').value;
-      const name = document.getElementById('edit-product-name').value;
-      const price = parseInt(document.getElementById('edit-product-price').value);
-      const order = parseInt(document.getElementById('edit-product-order').value);
-      const enabled = document.getElementById('edit-product-enabled').checked;
-
-      if (!name || !price || price < 0) {
-        showToast('商品名と価格は必須です', 'error');
-        return;
-      }
-
-      const productData = {
-        name: name,
-        price: price,
-        order: order,
-        enabled: enabled
-      };
-
-      updateStatus('商品更新中', 'loading');
-
-      callGoogleScript('updateProduct', productId, productData)
-        .then(result => {
-          if (result.success) {
-            showToast(result.message, 'success');
-            bootstrap.Modal.getInstance(document.getElementById('editProductModal')).hide();
-            loadMenuData();
-            loadInventoryData(); // 在庫データも更新
+            loadOrdersData();
+            loadOverviewData();
             updateStatus('更新完了', 'success');
           } else {
             showToast(result.message, 'error');
@@ -1440,43 +1613,21 @@
           }
         })
         .catch(error => {
-          console.error('商品更新エラー:', error);
-          showToast('商品の更新に失敗しました', 'error');
+          showToast('引渡状態の更新に失敗しました: ' + error, 'error');
           updateStatus('更新エラー', 'error');
-        });
-    }
-
-    // 商品削除確認
-    function confirmDeleteProduct(productId, productName) {
-      if (confirm(`商品「${productName}」を削除しますか？\n\n注意：この操作は取り消せません。`)) {
-        deleteProduct(productId);
-      }
-    }
-
-    // 商品削除
-    function deleteProduct(productId) {
-      updateStatus('商品削除中', 'loading');
-
-      callGoogleScript('deleteProduct', productId)
-        .then(result => {
-          if (result.success) {
-            showToast(result.message, 'success');
-            loadMenuData();
-            loadInventoryData(); // 在庫データも更新
-            updateStatus('削除完了', 'success');
-          } else {
-            showToast(result.message, 'error');
-            updateStatus('削除エラー', 'error');
-          }
         })
-        .catch(error => {
-          console.error('商品削除エラー:', error);
-          showToast('商品の削除に失敗しました', 'error');
-          updateStatus('削除エラー', 'error');
+        .finally(() => {
+          button.disabled = false;
+          button.innerHTML = originalHTML;
         });
     }
 
-    // 在庫更新モーダル表示
+    // フィルター適用
+    function applyOrderFilters() {
+      renderOrders(1);
+    }
+
+    // 在庫管理、商品管理などの残りの関数
     function showStockModal(productId, productName, currentStock, minStock) {
       document.getElementById('stock-product-id').value = productId;
       document.getElementById('stock-product-name').value = productName;
@@ -1487,7 +1638,6 @@
       new bootstrap.Modal(document.getElementById('stockModal')).show();
     }
 
-    // 在庫更新
     function updateStock() {
       const productId = document.getElementById('stock-product-id').value;
       const newStock = parseInt(document.getElementById('stock-new').value);
@@ -1526,7 +1676,6 @@
         });
     }
 
-    // 一括在庫更新モーダル表示
     function showBulkUpdateModal() {
       const content = document.getElementById('bulk-update-content');
       const inventory = currentData.inventory;
@@ -1561,7 +1710,6 @@
       new bootstrap.Modal(document.getElementById('bulkUpdateModal')).show();
     }
 
-    // 一括在庫更新実行
     function executeBulkUpdate() {
       const inputs = document.querySelectorAll('.bulk-stock');
       const updates = [];
@@ -1602,79 +1750,6 @@
         });
     }
 
-    // 引渡状態切り替え
-    function toggleDelivery(rowIndex, isDelivered) {
-      const button = event.target;
-      const originalHTML = button.innerHTML;
-      button.disabled = true;
-      button.innerHTML = '処理中...';
-      updateStatus('状態更新中', 'loading');
-
-      callGoogleScript('updateDeliveryStatus', rowIndex, isDelivered)
-        .then(result => {
-          if (result.success) {
-            showToast(result.message, 'success');
-            loadOrdersData();
-            loadOverviewData();
-            updateStatus('更新完了', 'success');
-          } else {
-            showToast(result.message, 'error');
-            updateStatus('更新エラー', 'error');
-          }
-        })
-        .catch(error => {
-          showToast('引渡状態の更新に失敗しました: ' + error, 'error');
-          updateStatus('更新エラー', 'error');
-        })
-        .finally(() => {
-          button.disabled = false;
-          button.innerHTML = originalHTML;
-        });
-    }
-
-    // フィルター適用
-    function applyOrderFilters() {
-      renderOrders(1);
-    }
-
-    // エクスポート機能
-    function exportOrders() {
-      updateStatus('データエクスポート中', 'loading');
-      // 実装は省略（CSVエクスポート機能）
-      showToast('エクスポート機能は開発中です', 'info');
-      updateStatus('エクスポート完了', 'success');
-    }
-
-    function exportInventory() {
-      updateStatus('在庫エクスポート中', 'loading');
-      // 実装は省略（CSVエクスポート機能）
-      showToast('エクスポート機能は開発中です', 'info');
-      updateStatus('エクスポート完了', 'success');
-    }
-
-    function exportData() {
-      updateStatus('全データエクスポート中', 'loading');
-      // 実装は省略（全データエクスポート機能）
-      showToast('エクスポート機能は開発中です', 'info');
-      updateStatus('エクスポート完了', 'success');
-    }
-
-    // 全データ更新
-    function refreshAllData() {
-      updateStatus('全データ更新中', 'loading');
-      
-      const activeTab = document.querySelector('.nav-pills .nav-link.active');
-      if (activeTab) {
-        const targetId = activeTab.getAttribute('data-bs-target').substring(1);
-        loadTabData(targetId);
-      }
-      
-      setTimeout(() => {
-        showToast('データを更新しました', 'success');
-      }, 1000);
-    }
-
-    // 在庫リセット
     function resetAllInventory() {
       if (confirm('全商品の在庫を10個にリセットしますか？')) {
         const updates = currentData.inventory.map(item => ({
@@ -1696,6 +1771,247 @@
             showToast('在庫リセットに失敗しました: ' + error, 'error');
           });
       }
+    }
+
+    function addNewProduct() {
+      const name = document.getElementById('new-product-name').value;
+      const price = parseInt(document.getElementById('new-product-price').value);
+      const order = parseInt(document.getElementById('new-product-order').value) || 999;
+      const stock = parseInt(document.getElementById('new-product-stock').value) || 10;
+
+      if (!name || !price || price < 0) {
+        showToast('商品名と価格は必須です', 'error');
+        return;
+      }
+
+      const productData = {
+        name: name,
+        price: price,
+        order: order,
+        initialStock: stock,
+        minStock: 3
+      };
+
+      updateStatus('商品追加中', 'loading');
+
+      callGoogleScript('addProduct', productData)
+        .then(result => {
+          if (result.success) {
+            showToast(result.message, 'success');
+            document.getElementById('add-product-form').reset();
+            loadMenuData();
+            loadInventoryData();
+            updateStatus('追加完了', 'success');
+          } else {
+            showToast(result.message, 'error');
+            updateStatus('追加エラー', 'error');
+          }
+        })
+        .catch(error => {
+          console.error('商品追加エラー:', error);
+          showToast('商品の追加に失敗しました', 'error');
+          updateStatus('追加エラー', 'error');
+        });
+    }
+
+    function editProduct(productId) {
+      const product = currentData.products.find(p => p.id === productId);
+      if (!product) {
+        showToast('商品が見つかりません', 'error');
+        return;
+      }
+
+      document.getElementById('edit-product-id').value = product.id;
+      document.getElementById('edit-product-name').value = product.name;
+      document.getElementById('edit-product-price').value = product.price;
+      document.getElementById('edit-product-order').value = product.order;
+      document.getElementById('edit-product-enabled').checked = product.enabled;
+
+      new bootstrap.Modal(document.getElementById('editProductModal')).show();
+    }
+
+    function saveProductEdit() {
+      const productId = document.getElementById('edit-product-id').value;
+      const name = document.getElementById('edit-product-name').value;
+      const price = parseInt(document.getElementById('edit-product-price').value);
+      const order = parseInt(document.getElementById('edit-product-order').value);
+      const enabled = document.getElementById('edit-product-enabled').checked;
+
+      if (!name || !price || price < 0) {
+        showToast('商品名と価格は必須です', 'error');
+        return;
+      }
+
+      const productData = {
+        name: name,
+        price: price,
+        order: order,
+        enabled: enabled
+      };
+
+      updateStatus('商品更新中', 'loading');
+
+      callGoogleScript('updateProduct', productId, productData)
+        .then(result => {
+          if (result.success) {
+            showToast(result.message, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('editProductModal')).hide();
+            loadMenuData();
+            loadInventoryData();
+            updateStatus('更新完了', 'success');
+          } else {
+            showToast(result.message, 'error');
+            updateStatus('更新エラー', 'error');
+          }
+        })
+        .catch(error => {
+          console.error('商品更新エラー:', error);
+          showToast('商品の更新に失敗しました', 'error');
+          updateStatus('更新エラー', 'error');
+        });
+    }
+
+    function confirmDeleteProduct(productId, productName) {
+      if (confirm(`商品「${productName}」を削除しますか？\n\n注意：この操作は取り消せません。`)) {
+        deleteProduct(productId);
+      }
+    }
+
+    function deleteProduct(productId) {
+      updateStatus('商品削除中', 'loading');
+
+      callGoogleScript('deleteProduct', productId)
+        .then(result => {
+          if (result.success) {
+            showToast(result.message, 'success');
+            loadMenuData();
+            loadInventoryData();
+            updateStatus('削除完了', 'success');
+          } else {
+            showToast(result.message, 'error');
+            updateStatus('削除エラー', 'error');
+          }
+        })
+        .catch(error => {
+          console.error('商品削除エラー:', error);
+          showToast('商品の削除に失敗しました', 'error');
+          updateStatus('削除エラー', 'error');
+        });
+    }
+
+    function editOrder(orderId) {
+      showToast('予約編集機能は開発中です', 'info');
+    }
+
+    function confirmCancelOrder(orderId) {
+      if (confirm('この予約をキャンセルしますか？\n\n注意：この操作は取り消せません。')) {
+        cancelOrder(orderId);
+      }
+    }
+
+    function cancelOrder(orderId) {
+      updateStatus('予約キャンセル中', 'loading');
+
+      callGoogleScript('cancelOrder', orderId)
+        .then(result => {
+          if (result.success) {
+            showToast(result.message, 'success');
+            loadOverviewData();
+            loadOrdersData();
+            updateStatus('キャンセル完了', 'success');
+          } else {
+            showToast(result.message, 'error');
+            updateStatus('キャンセルエラー', 'error');
+          }
+        })
+        .catch(error => {
+          console.error('予約キャンセルエラー:', error);
+          showToast('予約のキャンセルに失敗しました', 'error');
+          updateStatus('キャンセルエラー', 'error');
+        });
+    }
+
+    // デバッグ機能
+    function debugSystem() {
+      updateStatus('システムデバッグ中', 'loading');
+      console.log('🔍 システムデバッグ開始');
+      
+      Promise.all([
+        callGoogleScript('debugOrderList'),
+        callGoogleScript('debugSpreadsheetStructure'),
+        callGoogleScript('testConnection')
+      ]).then(([orderDebug, structureDebug, connectionTest]) => {
+        console.log('🔍 デバッグ結果:', {
+          orderDebug,
+          structureDebug,
+          connectionTest
+        });
+        
+        const debugInfo = {
+          timestamp: new Date().toISOString(),
+          currentData: currentData,
+          orderDebug: orderDebug,
+          structureDebug: structureDebug,
+          connectionTest: connectionTest,
+          browserInfo: {
+            userAgent: navigator.userAgent,
+            language: navigator.language,
+            cookieEnabled: navigator.cookieEnabled
+          }
+        };
+        
+        // デバッグ情報をコンソールとアラートで表示
+        console.log('🔍 完全デバッグ情報:', debugInfo);
+        
+        let alertMessage = `デバッグ情報:\n\n`;
+        alertMessage += `予約データ数: ${orderDebug?.orderCount || 0}件\n`;
+        alertMessage += `スプレッドシート行数: ${structureDebug?.structure?.rows || 0}行\n`;
+        alertMessage += `接続テスト: ${connectionTest?.status || 'エラー'}\n\n`;
+        alertMessage += `詳細な情報はブラウザのコンソール（F12）をご確認ください。`;
+        
+        alert(alertMessage);
+        updateStatus('デバッグ完了', 'success');
+        
+      }).catch(error => {
+        console.error('❌ デバッグエラー:', error);
+        alert(`デバッグ中にエラーが発生しました:\n${error.message}\n\n詳細はコンソール（F12）をご確認ください。`);
+        updateStatus('デバッグエラー', 'error');
+      });
+    }
+
+    // エクスポート機能（個別）
+    function exportOrders() {
+      updateStatus('データエクスポート中', 'loading');
+      showToast('予約データエクスポート機能は開発中です', 'info');
+      updateStatus('エクスポート完了', 'success');
+    }
+
+    function exportInventory() {
+      updateStatus('在庫エクスポート中', 'loading');
+      showToast('在庫データエクスポート機能は開発中です', 'info');
+      updateStatus('エクスポート完了', 'success');
+    }
+
+    // エクスポート機能（全体）
+    function exportData() {
+      updateStatus('全データエクスポート中', 'loading');
+      showToast('エクスポート機能は開発中です', 'info');
+      updateStatus('エクスポート完了', 'success');
+    }
+
+    // 全データ更新
+    function refreshAllData() {
+      updateStatus('全データ更新中', 'loading');
+      
+      const activeTab = document.querySelector('.nav-pills .nav-link.active');
+      if (activeTab) {
+        const targetId = activeTab.getAttribute('data-bs-target').substring(1);
+        loadTabData(targetId);
+      }
+      
+      setTimeout(() => {
+        showToast('データを更新しました', 'success');
+      }, 1000);
     }
 
     // 自動更新
@@ -1741,10 +2057,31 @@
 
     function callGoogleScript(functionName, ...args) {
       return new Promise((resolve, reject) => {
-        google.script.run
-          .withSuccessHandler(resolve)
-          .withFailureHandler(reject)
-          [functionName](...args);
+        console.log(`🔄 Google Script呼び出し: ${functionName}`, args);
+        
+        // タイムアウト設定（30秒）
+        const timeout = setTimeout(() => {
+          reject(new Error(`タイムアウト: ${functionName}の実行に30秒以上かかりました`));
+        }, 30000);
+        
+        try {
+          google.script.run
+            .withSuccessHandler(function(result) {
+              clearTimeout(timeout);
+              console.log(`✅ Google Script成功: ${functionName}`, result);
+              resolve(result);
+            })
+            .withFailureHandler(function(error) {
+              clearTimeout(timeout);
+              console.error(`❌ Google Script失敗: ${functionName}`, error);
+              reject(new Error(`${functionName}の実行に失敗しました: ${error.message || error}`));
+            })
+            [functionName](...args);
+        } catch (error) {
+          clearTimeout(timeout);
+          console.error(`❌ Google Script呼び出しエラー: ${functionName}`, error);
+          reject(new Error(`${functionName}の呼び出しでエラーが発生しました: ${error.message || error}`));
+        }
       });
     }
 
@@ -1828,6 +2165,29 @@
     window.addEventListener('beforeunload', function() {
       clearInterval(updateInterval);
     });
+
+    // グローバルエラーハンドラー
+    window.addEventListener('error', function(event) {
+      console.error('🚨 グローバルエラー:', event.error);
+      updateStatus('エラー発生', 'error');
+      
+      // 重要なエラーの場合はユーザーに通知
+      if (event.error && event.error.message && event.error.message.includes('google.script')) {
+        showToast('Google Apps Scriptとの通信でエラーが発生しました。ページを再読み込みしてください。', 'error');
+      }
+    });
+
+    // 未処理の Promise 拒否をキャッチ
+    window.addEventListener('unhandledrejection', function(event) {
+      console.error('🚨 未処理のPromise拒否:', event.reason);
+      
+      if (event.reason && event.reason.message && event.reason.message.includes('google.script')) {
+        showToast('データの取得に失敗しました。デバッグボタンで詳細を確認してください。', 'error');
+      }
+    });
+
+    // モーダル、在庫管理、メニュー管理などの関数（省略）
+    // 実際のコードでは既存の関数をそのまま含める
   </script>
 </body>
 </html>
