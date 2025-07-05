@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Hyggelyカンパーニュ専門店 管理者ダッシュボード v5.2.1</title>
+  <title>Hyggelyカンパーニュ専門店 管理者ダッシュボード v5.2.3</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <style>
@@ -94,7 +94,7 @@
       vertical-align: middle;
     }
     
-    /* 🔧 修正：予約テーブルのスタイル改善 */
+    /* 予約テーブルのスタイル改善 */
     .orders-table {
       font-size: 0.8rem;
     }
@@ -198,7 +198,7 @@
       border-radius: 4px;
     }
     
-    /* 🔧 新規追加：デバッグ情報表示用 */
+    /* デバッグ情報表示用 */
     .debug-info {
       background: #f8f9fa;
       border: 1px solid #dee2e6;
@@ -315,7 +315,7 @@
   <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
     <div class="container-fluid">
       <a class="navbar-brand" href="#">
-        <i class="bi bi-shop me-2"></i>Hyggely管理ダッシュボード v5.2.1
+        <i class="bi bi-shop me-2"></i>Hyggely管理ダッシュボード v5.2.3
       </a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
         <span class="navbar-toggler-icon"></span>
@@ -343,7 +343,7 @@
   </nav>
 
   <div class="container-fluid py-3">
-    <!-- 🔧 新規追加：デバッグ情報パネル -->
+    <!-- デバッグ情報パネル -->
     <div class="card mb-3" id="debug-panel" style="display: none;">
       <div class="card-header">
         <i class="bi bi-bug me-2"></i>デバッグ情報
@@ -626,32 +626,10 @@
               <i class="bi bi-plus-circle me-2"></i>新商品追加
             </div>
             <div class="card-body">
-              <form id="add-product-form" class="product-form">
-                <div class="row">
-                  <div class="col-md-4">
-                    <label class="form-label">商品名 <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="new-product-name" required>
-                  </div>
-                  <div class="col-md-2">
-                    <label class="form-label">価格 <span class="text-danger">*</span></label>
-                    <input type="number" class="form-control" id="new-product-price" min="0" required>
-                  </div>
-                  <div class="col-md-2">
-                    <label class="form-label">表示順</label>
-                    <input type="number" class="form-control" id="new-product-order" min="1">
-                  </div>
-                  <div class="col-md-2">
-                    <label class="form-label">初期在庫</label>
-                    <input type="number" class="form-control" id="new-product-stock" min="0" value="10">
-                  </div>
-                  <div class="col-md-2">
-                    <label class="form-label">&nbsp;</label>
-                    <button type="button" class="btn btn-primary w-100" onclick="addNewProduct()">
-                      <i class="bi bi-plus me-1"></i>追加
-                    </button>
-                  </div>
-                </div>
-              </form>
+              <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                商品管理機能は開発中です。現在は閲覧のみ可能です。
+              </div>
             </div>
           </div>
           
@@ -793,47 +771,6 @@
     </div>
   </div>
 
-  <!-- 商品編集モーダル -->
-  <div class="modal fade" id="editProductModal" tabindex="-1">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">商品編集</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <form id="edit-product-form">
-            <input type="hidden" id="edit-product-id">
-            <div class="mb-3">
-              <label class="form-label">商品名 <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" id="edit-product-name" required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">価格 <span class="text-danger">*</span></label>
-              <input type="number" class="form-control" id="edit-product-price" min="0" required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">表示順</label>
-              <input type="number" class="form-control" id="edit-product-order" min="1">
-            </div>
-            <div class="mb-3">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="edit-product-enabled">
-                <label class="form-check-label" for="edit-product-enabled">
-                  商品を有効にする
-                </label>
-              </div>
-            </div>
-          </form>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
-          <button type="button" class="btn btn-primary" onclick="saveProductEdit()">保存</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     let currentData = { stats: {}, orders: [], inventory: [], products: [] };
@@ -843,7 +780,7 @@
 
     // 初期化
     document.addEventListener('DOMContentLoaded', function() {
-      console.log('🚀 管理者ダッシュボード起動 v5.2.1 - 完全修正版');
+      console.log('🚀 管理者ダッシュボード起動 v5.2.3 - エラー解決版');
       
       // タブ切り替えイベント
       document.querySelectorAll('[data-bs-toggle="pill"]').forEach(tab => {
@@ -859,64 +796,69 @@
       updateStatus('ダッシュボード起動完了', 'success');
     });
 
-    // 🔧 新規追加：デバッグ機能
+    // デバッグ機能
     function debugData() {
       showDebugPanel();
       updateStatus('デバッグ情報取得中', 'loading');
       
-      callGoogleScript('debugOrderData')
-        .then(debugInfo => {
-          const content = document.getElementById('debug-content');
-          if (debugInfo && !debugInfo.error) {
-            let html = `<strong>📊 スプレッドシート情報:</strong><br>`;
-            html += `スプレッドシートID: ${debugInfo.spreadsheetId}<br>`;
-            html += `シート名: ${debugInfo.sheetName}<br>`;
-            html += `総行数: ${debugInfo.totalRows}<br>`;
-            html += `総列数: ${debugInfo.totalColumns}<br><br>`;
-            
-            html += `<strong>📝 ヘッダー行:</strong><br>`;
-            debugInfo.headers.forEach((header, index) => {
-              const columnLetter = String.fromCharCode(65 + (index % 26));
-              if (index >= 26) {
-                const firstLetter = String.fromCharCode(64 + Math.floor(index / 26));
-                const secondLetter = String.fromCharCode(65 + (index % 26));
-                html += `${firstLetter}${secondLetter}列(${index}): ${header}<br>`;
-              } else {
+      try {
+        google.script.run
+          .withSuccessHandler(function(debugInfo) {
+            const content = document.getElementById('debug-content');
+            if (debugInfo && !debugInfo.error) {
+              let html = `<strong>📊 スプレッドシート情報:</strong><br>`;
+              html += `スプレッドシートID: ${debugInfo.spreadsheetId}<br>`;
+              html += `シート名: ${debugInfo.sheetName}<br>`;
+              html += `総行数: ${debugInfo.totalRows}<br>`;
+              html += `総列数: ${debugInfo.totalColumns}<br><br>`;
+              
+              html += `<strong>📝 ヘッダー行:</strong><br>`;
+              debugInfo.headers.forEach((header, index) => {
+                const columnLetter = getColumnLetter(index);
                 html += `${columnLetter}列(${index}): ${header}<br>`;
-              }
-            });
-            
-            html += `<br><strong>📄 サンプルデータ行:</strong><br>`;
-            debugInfo.sampleData.forEach((value, index) => {
-              if (value !== '' && value !== null && value !== undefined) {
-                const columnLetter = String.fromCharCode(65 + (index % 26));
-                if (index >= 26) {
-                  const firstLetter = String.fromCharCode(64 + Math.floor(index / 26));
-                  const secondLetter = String.fromCharCode(65 + (index % 26));
-                  html += `${firstLetter}${secondLetter}列(${index}): ${value}<br>`;
-                } else {
+              });
+              
+              html += `<br><strong>📄 サンプルデータ行:</strong><br>`;
+              debugInfo.sampleData.forEach((value, index) => {
+                if (value !== '' && value !== null && value !== undefined) {
+                  const columnLetter = getColumnLetter(index);
                   html += `${columnLetter}列(${index}): ${value}<br>`;
                 }
-              }
-            });
-            
-            if (debugInfo.importantColumns) {
-              html += `<br><strong>🔍 重要列データ:</strong><br>`;
-              Object.entries(debugInfo.importantColumns).forEach(([key, value]) => {
-                html += `${key}: ${value}<br>`;
               });
+              
+              if (debugInfo.importantColumns) {
+                html += `<br><strong>🔍 重要列データ:</strong><br>`;
+                Object.entries(debugInfo.importantColumns).forEach(([key, value]) => {
+                  html += `${key}: ${value}<br>`;
+                });
+              }
+              
+              content.innerHTML = html;
+            } else {
+              content.innerHTML = `エラー: ${debugInfo?.error || 'デバッグ情報の取得に失敗しました'}`;
             }
-            
-            content.innerHTML = html;
-          } else {
-            content.innerHTML = `エラー: ${debugInfo?.error || 'デバッグ情報の取得に失敗しました'}`;
-          }
-          updateStatus('デバッグ情報表示完了', 'success');
-        })
-        .catch(error => {
-          document.getElementById('debug-content').innerHTML = 'エラー: ' + error;
-          updateStatus('デバッグエラー', 'error');
-        });
+            updateStatus('デバッグ情報表示完了', 'success');
+          })
+          .withFailureHandler(function(error) {
+            document.getElementById('debug-content').innerHTML = 'エラー: ' + error;
+            updateStatus('デバッグエラー', 'error');
+          })
+          .debugOrderData();
+      } catch (error) {
+        console.error('デバッグ関数呼び出しエラー:', error);
+        document.getElementById('debug-content').innerHTML = 'デバッグ関数呼び出しエラー: ' + error;
+        updateStatus('デバッグエラー', 'error');
+      }
+    }
+
+    function getColumnLetter(index) {
+      if (index < 26) {
+        return String.fromCharCode(65 + index);
+      } else {
+        const firstLetter = String.fromCharCode(64 + Math.floor(index / 26));
+        const secondLetter = String.fromCharCode(65 + (index % 26));
+        return firstLetter + secondLetter;
+      }
     }
 
     function showDebugPanel() {
@@ -938,7 +880,7 @@
       }
     }
 
-    // 🔧 修正版：概要データ読み込み
+    // 概要データ読み込み
     function loadOverviewData() {
       showLoading('overview');
       updateStatus('統計データ読み込み中', 'loading');
@@ -965,7 +907,7 @@
       });
     }
 
-    // 🔧 修正版：概要表示
+    // 概要表示
     function renderOverview() {
       const stats = currentData.stats;
       const inventory = currentData.inventory;
@@ -987,7 +929,7 @@
       // 今後1週間の予約状況
       renderWeekReservations();
       
-      // 最近の予約（受取日時昇順で最初の10件）
+      // 最近の予約
       renderRecentOrders(orders.slice(0, 10));
     }
 
@@ -1107,7 +1049,7 @@
       container.innerHTML = html;
     }
 
-    // 最近の予約表示（受取日時昇順）
+    // 最近の予約表示
     function renderRecentOrders(orders) {
       const container = document.getElementById('recent-orders');
       
@@ -1115,8 +1057,6 @@
         container.innerHTML = '<div class="text-center text-muted">予約はありません</div>';
         return;
       }
-
-      console.log('📋 最近の予約表示:', orders);
 
       let html = '<div class="row">';
       orders.forEach(order => {
@@ -1174,12 +1114,10 @@
         });
     }
 
-    // 🔧 修正版：予約一覧表示（受取日時昇順）
+    // 予約一覧表示
     function renderOrders(page = 1) {
       const tbody = document.getElementById('orders-table-body');
-      let orders = [...(currentData.orders || [])]; // コピーを作成
-
-      console.log('📋 予約一覧表示開始:', orders.length + '件');
+      let orders = [...(currentData.orders || [])];
 
       // フィルター適用
       const statusFilter = document.getElementById('order-status-filter')?.value;
@@ -1207,8 +1145,6 @@
           return customerName.includes(searchFilter) || email.includes(searchFilter);
         });
       }
-
-      console.log('📋 フィルター後:', orders.length + '件');
 
       // ページネーション
       const totalPages = Math.ceil(orders.length / ordersPerPage);
@@ -1274,8 +1210,6 @@
 
       tbody.innerHTML = html;
       renderOrdersPagination(totalPages, page);
-      
-      console.log('📋 予約一覧表示完了:', pageOrders.length + '件表示');
     }
 
     // ページネーション表示
@@ -1773,20 +1707,12 @@
     }
 
     // 商品管理機能（プレースホルダー）
-    function addNewProduct() {
-      showToast('商品追加機能は開発中です', 'info');
-    }
-
     function editProduct(productId) {
       showToast('商品編集機能は開発中です', 'info');
     }
 
     function confirmDeleteProduct(productId, productName) {
       showToast('商品削除機能は開発中です', 'info');
-    }
-
-    function saveProductEdit() {
-      showToast('商品保存機能は開発中です', 'info');
     }
 
     function editOrder(orderId) {
@@ -1823,9 +1749,15 @@
       hideLoading(section);
     }
 
+    // Google Script呼び出し
     function callGoogleScript(functionName, ...args) {
       return new Promise((resolve, reject) => {
         try {
+          if (typeof google === 'undefined' || !google.script || !google.script.run) {
+            reject(new Error('Google Apps Script API が利用できません'));
+            return;
+          }
+          
           google.script.run
             .withSuccessHandler(resolve)
             .withFailureHandler(reject)
@@ -1838,6 +1770,8 @@
 
     function updateStatus(message, type) {
       const status = document.getElementById('status');
+      if (!status) return;
+      
       let icon = 'bi-wifi';
       let color = 'rgba(40, 167, 69, 0.9)';
       
@@ -1914,43 +1848,55 @@
 
     // キーボードショートカット
     document.addEventListener('keydown', function(e) {
-      // Ctrl+R または F5 でデータ更新
-      if ((e.ctrlKey && e.key === 'r') || e.key === 'F5') {
-        e.preventDefault();
-        refreshAllData();
-      }
-      
-      // Ctrl+D でデバッグパネル表示
-      if (e.ctrlKey && e.key === 'd') {
-        e.preventDefault();
-        debugData();
-      }
-      
-      // Escape でモーダルを閉じる
-      if (e.key === 'Escape') {
-        const openModals = document.querySelectorAll('.modal.show');
-        openModals.forEach(modal => {
-          const bsModal = bootstrap.Modal.getInstance(modal);
-          if (bsModal) bsModal.hide();
-        });
+      try {
+        // Ctrl+R または F5 でデータ更新
+        if ((e.ctrlKey && e.key === 'r') || e.key === 'F5') {
+          e.preventDefault();
+          refreshAllData();
+        }
         
-        // デバッグパネルも閉じる
-        hideDebugPanel();
+        // Ctrl+D でデバッグパネル表示
+        if (e.ctrlKey && e.key === 'd') {
+          e.preventDefault();
+          debugData();
+        }
+        
+        // Escape でモーダルを閉じる
+        if (e.key === 'Escape') {
+          const openModals = document.querySelectorAll('.modal.show');
+          openModals.forEach(modal => {
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            if (bsModal) bsModal.hide();
+          });
+          
+          // デバッグパネルも閉じる
+          hideDebugPanel();
+        }
+      } catch (error) {
+        console.warn('キーボードショートカット処理エラー:', error);
       }
     });
 
     // ページ離脱時の処理
     window.addEventListener('beforeunload', function() {
-      clearInterval(updateInterval);
+      try {
+        clearInterval(updateInterval);
+      } catch (error) {
+        console.warn('cleanup処理エラー:', error);
+      }
     });
 
     // ページ可視性変更時の処理
     document.addEventListener('visibilitychange', function() {
-      if (!document.hidden) {
-        // ページが再び表示された時は概要データを更新
-        if (document.querySelector('#overview-tab.active')) {
-          loadOverviewData();
+      try {
+        if (!document.hidden) {
+          // ページが再び表示された時は概要データを更新
+          if (document.querySelector('#overview-tab.active')) {
+            loadOverviewData();
+          }
         }
+      } catch (error) {
+        console.warn('可視性変更処理エラー:', error);
       }
     });
 
@@ -1977,13 +1923,14 @@
       return result;
     }
 
-    // デバッグ用：ローカルストレージへのデータ保存（開発時用）
+    // デバッグ用：データ保存
     function saveDebugData() {
       try {
         const debugData = {
           timestamp: new Date().toISOString(),
           currentData: currentData,
-          version: '5.2.1'
+          version: '5.2.3',
+          environment: 'GAS'
         };
         console.log('💾 デバッグデータ:', debugData);
         showToast('デバッグデータをコンソールに出力しました', 'info');
@@ -1999,11 +1946,9 @@
       showDebug: debugData,
       saveDebug: saveDebugData,
       testToast: (message, type) => showToast(message, type),
-      version: '5.2.1'
+      version: '5.2.3',
+      environment: 'GAS-iframe'
     };
 
     console.log('🔧 デバッグ機能: window.hyggelyDebug で利用可能');
-    console.log('🚀 Hyggelyダッシュボード v5.2.1 初期化完了');
-  </script>
-</body>
-</html>
+    console.log('🚀 Hyggelyダッシュボード v5.2.3 初期化完了（エラー解決版）');

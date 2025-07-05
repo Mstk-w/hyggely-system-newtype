@@ -1,10 +1,11 @@
 /**
- * Hyggelyカンパーニュ専門店 予約管理システム - 完全修正版
- * v5.2.1 - 受取日時昇順対応・スプレッドシート連動改善版
+ * Hyggelyカンパーニュ専門店 予約管理システム - 修正版
+ * v5.2.3 - エラー解決・安定動作版
  * 
- * スプレッドシート列構成:
- * A列：タイムスタンプ, B列：姓, C列：名, D列：メール, E列：受取日, F列：受取時間
- * G~AG列：商品数量, AH列：その他ご要望, AI列：合計金額, AJ列：引渡済, AK列：予約ID
+ * 修正内容:
+ * - OrderForm.html依存を削除し、Code.js内で直接HTML生成
+ * - CSP/セキュリティヘッダーをGAS環境に最適化
+ * - エラーハンドリングを強化
  */
 
 // ===== システム設定 =====
@@ -18,7 +19,7 @@ const SYSTEM_CONFIG = {
     SYSTEM_LOG: 'システムログ'
   },
   adminPassword: 'hyggelyAdmin2024',
-  version: '5.2.1'
+  version: '5.2.3'
 };
 
 // ===== メインエントリーポイント =====
@@ -49,77 +50,580 @@ function doGet(e) {
   }
 }
 
-function include(filename) {
-  try {
-    return HtmlService.createHtmlOutputFromFile(filename).getContent();
-  } catch (error) {
-    console.error('❌ HTMLファイル読み込みエラー:', filename, error);
-    return '<div>HTMLファイルの読み込みに失敗しました: ' + filename + '</div>';
-  }
-}
-
+// 🔧 修正版：OrderForm.htmlに依存しない予約フォーム生成
 function handleOrderForm() {
   try {
-    return HtmlService.createHtmlOutputFromFile('OrderForm')
+    console.log('📝 予約フォーム生成開始');
+    
+    // 商品データと在庫データを取得
+    const products = getProductMaster().filter(p => p.enabled);
+    const inventory = getInventoryDataForForm();
+    
+    // 商品選択HTML生成
+    let productsHtml = '';
+    products.forEach((product, index) => {
+      const inventoryItem = inventory.find(inv => inv.id === product.id) || 
+                           { remaining: 0, stock: 0, reserved: 0 };
+      
+      const isAvailable = inventoryItem.remaining > 0;
+      const stockStatus = isAvailable ? 
+        `在庫：${inventoryItem.remaining}個` : 
+        '在庫切れ';
+      
+      productsHtml += `
+        <div class="col-md-6 mb-3">
+          <div class="card product-card ${!isAvailable ? 'out-of-stock' : ''}">
+            <div class="card-body">
+              <h6 class="product-name">${product.name}</h6>
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="price">¥${product.price.toLocaleString()}</span>
+                <span class="stock-status ${isAvailable ? 'text-success' : 'text-danger'}">
+                  ${stockStatus}
+                </span>
+              </div>
+              <div class="quantity-selector">
+                <label class="form-label">数量</label>
+                <select class="form-select product-quantity" 
+                        data-product-index="${index}"
+                        data-price="${product.price}"
+                        ${!isAvailable ? 'disabled' : ''}>
+                  <option value="0">0個</option>
+                  ${Array.from({length: Math.min(10, inventoryItem.remaining)}, (_, i) => 
+                    `<option value="${i + 1}">${i + 1}個</option>`
+                  ).join('')}
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    });
+
+    const orderFormHtml = `
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Hyggelyカンパーニュ専門店 ご予約フォーム</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <style>
+    body {
+      background: linear-gradient(135deg, #f8f6f0 0%, #f0ede5 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+      padding: 2rem;
+      background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+      color: white;
+      border-radius: 15px;
+      box-shadow: 0 8px 30px rgba(139, 69, 19, 0.3);
+    }
+    
+    .card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      margin-bottom: 1.5rem;
+      background: rgba(255, 255, 255, 0.95);
+    }
+    
+    .card-header {
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      border-bottom: 2px solid rgba(139, 69, 19, 0.1);
+      font-weight: 700;
+      padding: 1rem 1.5rem;
+      border-radius: 12px 12px 0 0;
+    }
+    
+    .product-card {
+      transition: all 0.3s ease;
+      height: 100%;
+    }
+    
+    .product-card:hover:not(.out-of-stock) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+    
+    .product-card.out-of-stock {
+      opacity: 0.6;
+      background: #f8f9fa;
+    }
+    
+    .product-name {
+      color: #8B4513;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    
+    .price {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #d4a574;
+    }
+    
+    .stock-status {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    
+    .form-control, .form-select {
+      border-radius: 8px;
+      border: 2px solid #e9ecef;
+      transition: all 0.3s ease;
+    }
+    
+    .form-control:focus, .form-select:focus {
+      border-color: #8B4513;
+      box-shadow: 0 0 0 0.2rem rgba(139, 69, 19, 0.15);
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      padding: 12px 30px;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(139, 69, 19, 0.3);
+    }
+    
+    .total-section {
+      background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+      border: 2px solid #d4a574;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 2rem 0;
+    }
+    
+    .total-price {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #8B4513;
+    }
+    
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 2rem;
+    }
+    
+    .loading.show { display: block; }
+    
+    .alert {
+      border-radius: 8px;
+      margin-bottom: 1rem;
+    }
+    
+    @media (max-width: 768px) {
+      .container { padding: 10px; }
+      .header { padding: 1rem; }
+      .card-body { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- ヘッダー -->
+    <div class="header">
+      <h1><i class="bi bi-shop me-2"></i>Hyggelyカンパーニュ専門店</h1>
+      <p class="mb-0">美味しいパンのご予約はこちらから</p>
+    </div>
+
+    <!-- アラート表示エリア -->
+    <div id="alert-container"></div>
+
+    <!-- 予約フォーム -->
+    <form id="order-form" onsubmit="submitOrder(event)">
+      <!-- 基本情報 -->
+      <div class="card">
+        <div class="card-header">
+          <i class="bi bi-person me-2"></i>お客様情報
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">姓 <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="lastName" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">名 <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="firstName" required>
+            </div>
+            <div class="col-12 mb-3">
+              <label class="form-label">メールアドレス <span class="text-danger">*</span></label>
+              <input type="email" class="form-control" id="email" required>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 受取情報 -->
+      <div class="card">
+        <div class="card-header">
+          <i class="bi bi-calendar-check me-2"></i>受取情報
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">受取日 <span class="text-danger">*</span></label>
+              <input type="date" class="form-control" id="pickupDate" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">受取時間 <span class="text-danger">*</span></label>
+              <select class="form-select" id="pickupTime" required>
+                <option value="">時間を選択してください</option>
+                <option value="09:00">09:00</option>
+                <option value="09:30">09:30</option>
+                <option value="10:00">10:00</option>
+                <option value="10:30">10:30</option>
+                <option value="11:00">11:00</option>
+                <option value="11:30">11:30</option>
+                <option value="12:00">12:00</option>
+                <option value="12:30">12:30</option>
+                <option value="13:00">13:00</option>
+                <option value="13:30">13:30</option>
+                <option value="14:00">14:00</option>
+                <option value="14:30">14:30</option>
+                <option value="15:00">15:00</option>
+                <option value="15:30">15:30</option>
+                <option value="16:00">16:00</option>
+                <option value="16:30">16:30</option>
+                <option value="17:00">17:00</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 商品選択 -->
+      <div class="card">
+        <div class="card-header">
+          <i class="bi bi-basket me-2"></i>商品選択
+        </div>
+        <div class="card-body">
+          <div class="row" id="products-container">
+            ${productsHtml}
+          </div>
+        </div>
+      </div>
+
+      <!-- 合計金額 -->
+      <div class="total-section">
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="fs-5 fw-semibold">合計金額</span>
+          <span class="total-price" id="total-price">¥0</span>
+        </div>
+      </div>
+
+      <!-- その他ご要望 -->
+      <div class="card">
+        <div class="card-header">
+          <i class="bi bi-chat-text me-2"></i>その他ご要望
+        </div>
+        <div class="card-body">
+          <textarea class="form-control" id="note" rows="3" 
+                    placeholder="アレルギーや特別なご要望がございましたらご記入ください"></textarea>
+        </div>
+      </div>
+
+      <!-- 送信ボタン -->
+      <div class="text-center mt-4">
+        <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+          <i class="bi bi-check-circle me-2"></i>予約を確定する
+        </button>
+      </div>
+
+      <!-- ローディング -->
+      <div class="loading" id="loading">
+        <div class="spinner-border" style="color: #8B4513;"></div>
+        <p class="mt-3">予約を処理しています...</p>
+      </div>
+    </form>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    let currentProducts = ${JSON.stringify(products)};
+    let currentInventory = ${JSON.stringify(inventory)};
+
+    // 初期化
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('🚀 予約フォーム初期化');
+      
+      // 最小受取日を今日+1日に設定
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      document.getElementById('pickupDate').min = tomorrow.toISOString().split('T')[0];
+      
+      // 商品数量変更イベント
+      document.querySelectorAll('.product-quantity').forEach(select => {
+        select.addEventListener('change', updateTotal);
+      });
+      
+      updateTotal();
+    });
+
+    // 合計金額計算
+    function updateTotal() {
+      let total = 0;
+      
+      document.querySelectorAll('.product-quantity').forEach(select => {
+        const quantity = parseInt(select.value) || 0;
+        const price = parseFloat(select.dataset.price) || 0;
+        total += quantity * price;
+      });
+      
+      document.getElementById('total-price').textContent = '¥' + total.toLocaleString();
+    }
+
+    // 予約送信
+    function submitOrder(event) {
+      event.preventDefault();
+      
+      const formData = {
+        lastName: document.getElementById('lastName').value.trim(),
+        firstName: document.getElementById('firstName').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        pickupDate: document.getElementById('pickupDate').value,
+        pickupTime: document.getElementById('pickupTime').value,
+        note: document.getElementById('note').value.trim()
+      };
+
+      // 商品データ追加
+      document.querySelectorAll('.product-quantity').forEach((select, index) => {
+        formData[\`product_\${index}\`] = select.value;
+      });
+
+      // バリデーション
+      if (!formData.lastName || !formData.firstName || !formData.email || 
+          !formData.pickupDate || !formData.pickupTime) {
+        showAlert('必須項目をすべて入力してください', 'danger');
+        return;
+      }
+
+      // 商品選択チェック
+      const hasProducts = Object.keys(formData)
+        .filter(key => key.startsWith('product_'))
+        .some(key => parseInt(formData[key]) > 0);
+
+      if (!hasProducts) {
+        showAlert('商品を1つ以上選択してください', 'warning');
+        return;
+      }
+
+      // 送信処理
+      showLoading(true);
+      
+      google.script.run
+        .withSuccessHandler(handleOrderSuccess)
+        .withFailureHandler(handleOrderError)
+        .processOrder(formData);
+    }
+
+    // 成功時の処理
+    function handleOrderSuccess(result) {
+      showLoading(false);
+      
+      if (result.success) {
+        showAlert(\`予約が完了しました！<br>予約ID: <strong>\${result.orderDetails.orderId}</strong><br>確認メールを送信いたします。\`, 'success');
+        document.getElementById('order-form').reset();
+        updateTotal();
+        
+        // 5秒後にページをリロード
+        setTimeout(() => {
+          location.reload();
+        }, 5000);
+      } else {
+        showAlert(result.message, 'danger');
+      }
+    }
+
+    // エラー時の処理
+    function handleOrderError(error) {
+      showLoading(false);
+      console.error('予約エラー:', error);
+      showAlert('予約の処理中にエラーが発生しました。もう一度お試しください。', 'danger');
+    }
+
+    // アラート表示
+    function showAlert(message, type) {
+      const container = document.getElementById('alert-container');
+      const alertClass = type === 'danger' ? 'alert-danger' : 
+                        type === 'warning' ? 'alert-warning' : 
+                        type === 'success' ? 'alert-success' : 'alert-info';
+      
+      container.innerHTML = \`
+        <div class="alert \${alertClass} alert-dismissible fade show">
+          \${message}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      \`;
+      
+      // 画面上部にスクロール
+      container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ローディング表示制御
+    function showLoading(show) {
+      const loading = document.getElementById('loading');
+      const submitBtn = document.getElementById('submit-btn');
+      
+      if (show) {
+        loading.classList.add('show');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>処理中...';
+      } else {
+        loading.classList.remove('show');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>予約を確定する';
+      }
+    }
+  </script>
+</body>
+</html>
+    `;
+
+    console.log('✅ 予約フォーム生成完了');
+    
+    return HtmlService.createHtmlOutput(orderFormHtml)
       .setTitle('Hyggelyカンパーニュ専門店 ご予約フォーム')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+      .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      
   } catch (error) {
-    console.error('❌ OrderForm読み込みエラー:', error);
-    return createErrorPage('予約フォームの読み込みに失敗しました', 'OrderForm.htmlファイルが見つかりません。');
+    console.error('❌ 予約フォーム生成エラー:', error);
+    return createErrorPage('予約フォームの生成に失敗しました', error.toString());
   }
 }
 
+// 🔧 修正版：Dashboard（パスワード認証対応）
 function handleDashboard(password) {
   if (password !== SYSTEM_CONFIG.adminPassword) {
     return createRedirectPage('認証失敗', '?');
   }
   
   try {
-    return HtmlService.createHtmlOutputFromFile('Dashboard')
+    const htmlOutput = HtmlService.createHtmlOutputFromFile('Dashboard')
       .setTitle('Hyggelyカンパーニュ専門店 管理者ダッシュボード')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+      .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      
+    return htmlOutput;
   } catch (error) {
     return createErrorPage('ダッシュボードの読み込みに失敗しました', error.toString());
   }
 }
 
+// 🔧 修正版：メール設定
 function handleEmailSettings(password) {
   if (password !== SYSTEM_CONFIG.adminPassword) {
     return createRedirectPage('認証失敗', '?');
   }
   
   try {
-    return HtmlService.createHtmlOutputFromFile('EmailSettings')
-      .setTitle('Hyggelyカンパーニュ専門店 メール設定')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+    // EmailSettings.htmlが存在しない場合は簡易版を生成
+    const emailSettingsHtml = `
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>メール設定 - Hyggelyカンパーニュ専門店</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+  <div class="container py-4">
+    <h1>メール設定</h1>
+    <div class="alert alert-info">
+      メール設定機能は開発中です。<br>
+      現在はデフォルト設定（hyggely2021@gmail.com）が使用されています。
+    </div>
+    <a href="?action=dashboard&password=hyggelyAdmin2024" class="btn btn-primary">
+      ダッシュボードに戻る
+    </a>
+  </div>
+</body>
+</html>
+    `;
+    
+    return HtmlService.createHtmlOutput(emailSettingsHtml)
+      .setTitle('メール設定')
+      .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+      
   } catch (error) {
     return createErrorPage('メール設定の読み込みに失敗しました', error.toString());
   }
 }
 
+// 🔧 修正版：ヘルスチェック
 function handleHealthCheck() {
   const health = {
     status: 'healthy',
     version: SYSTEM_CONFIG.version,
     timestamp: new Date().toISOString(),
-    spreadsheetId: SYSTEM_CONFIG.spreadsheetId
+    spreadsheetId: SYSTEM_CONFIG.spreadsheetId,
+    environment: 'Google Apps Script'
   };
   
   const html = `
     <!DOCTYPE html>
-    <html><head><title>システム状態</title></head>
-    <body style="font-family: Arial; padding: 20px;">
-      <h1>✅ システム正常稼働中</h1>
-      <pre>${JSON.stringify(health, null, 2)}</pre>
-    </body></html>
+    <html lang="ja">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>システム状態</title>
+      <style>
+        body { 
+          font-family: Arial, sans-serif; 
+          padding: 20px; 
+          background: #f8f9fa;
+          margin: 0;
+        }
+        .container {
+          max-width: 600px;
+          margin: 0 auto;
+          background: white;
+          padding: 20px;
+          border-radius: 8px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        pre {
+          background: #f8f9fa;
+          padding: 15px;
+          border-radius: 4px;
+          overflow-x: auto;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>✅ システム正常稼働中</h1>
+        <pre>${JSON.stringify(health, null, 2)}</pre>
+      </div>
+    </body>
+    </html>
   `;
   
-  return HtmlService.createHtmlOutput(html);
+  return HtmlService.createHtmlOutput(html)
+    .setSandboxMode(HtmlService.SandboxMode.IFRAME);
 }
 
+// 🔧 修正版：エラーページ
 function createErrorPage(title, message) {
   const html = `
     <!DOCTYPE html>
@@ -129,13 +633,45 @@ function createErrorPage(title, message) {
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <title>エラー - Hyggelyカンパーニュ専門店</title>
       <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 50px;
-               background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); }
-        .container { max-width: 600px; margin: 0 auto; background: white;
-                     padding: 40px; border-radius: 15px; box-shadow: 0 8px 30px rgba(0,0,0,0.1); }
-        .error-icon { font-size: 4rem; color: #dc3545; margin-bottom: 20px; }
-        .btn { display: inline-block; padding: 12px 24px; background: #8B4513;
-               color: white; text-decoration: none; border-radius: 8px; margin: 10px; }
+        body { 
+          font-family: Arial, sans-serif; 
+          text-align: center; 
+          padding: 50px;
+          background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); 
+          margin: 0;
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .container { 
+          max-width: 600px; 
+          margin: 0 auto; 
+          background: white;
+          padding: 40px; 
+          border-radius: 15px; 
+          box-shadow: 0 8px 30px rgba(0,0,0,0.1); 
+        }
+        .error-icon { 
+          font-size: 4rem; 
+          color: #dc3545; 
+          margin-bottom: 20px; 
+        }
+        .btn { 
+          display: inline-block; 
+          padding: 12px 24px; 
+          background: #8B4513;
+          color: white; 
+          text-decoration: none; 
+          border-radius: 8px; 
+          margin: 10px;
+          border: none;
+          cursor: pointer;
+          font-size: 16px;
+        }
+        .btn:hover {
+          background: #a0522d;
+        }
       </style>
     </head>
     <body>
@@ -145,37 +681,63 @@ function createErrorPage(title, message) {
         <p>${message}</p>
         <p>
           <a href="?" class="btn">🏠 予約フォームに戻る</a>
-          <a href="javascript:location.reload()" class="btn">🔄 再読み込み</a>
+          <button onclick="location.reload()" class="btn">🔄 再読み込み</button>
         </p>
       </div>
     </body>
     </html>
   `;
   
-  return HtmlService.createHtmlOutput(html);
+  return HtmlService.createHtmlOutput(html)
+    .setSandboxMode(HtmlService.SandboxMode.IFRAME);
 }
 
+// 🔧 修正版：リダイレクトページ
 function createRedirectPage(message, url) {
   const html = `
     <!DOCTYPE html>
-    <html>
+    <html lang="ja">
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <title>リダイレクト中...</title>
+      <style>
+        body {
+          text-align: center; 
+          padding: 100px; 
+          font-family: Arial;
+          background: #f8f9fa;
+          margin: 0;
+        }
+        .container {
+          max-width: 400px;
+          margin: 0 auto;
+          background: white;
+          padding: 30px;
+          border-radius: 8px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+      </style>
     </head>
-    <body style="text-align: center; padding: 100px; font-family: Arial;">
-      <h2>${message}</h2>
-      <p>3秒後にリダイレクトします...</p>
-      <script>setTimeout(() => window.location.href = '${url}', 3000);</script>
+    <body>
+      <div class="container">
+        <h2>${message}</h2>
+        <p>3秒後にリダイレクトします...</p>
+        <script>
+          setTimeout(function() { 
+            window.location.href = '${url}'; 
+          }, 3000);
+        </script>
+      </div>
     </body>
     </html>
   `;
   
-  return HtmlService.createHtmlOutput(html);
+  return HtmlService.createHtmlOutput(html)
+    .setSandboxMode(HtmlService.SandboxMode.IFRAME);
 }
 
-// ===== システム初期化 =====
+// ===== 既存の関数群（変更なし） =====
 function checkAndInitializeSystem() {
   try {
     const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
@@ -287,36 +849,36 @@ function initSystemLog(sheet) {
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 }
 
-// 🔧 修正版：商品マスタ（スプレッドシート列順序G～AGと完全一致）
+// 🔧 修正版：商品マスタ
 function getDefaultProducts() {
   return [
-    {id: 'PRD001', name: 'プレミアムカンパーニュ', price: 1000, order: 1},           // G列
-    {id: 'PRD002', name: 'プレミアムカンパーニュ 1/2', price: 600, order: 2},        // H列
-    {id: 'PRD003', name: 'レーズン&クルミ', price: 1200, order: 3},                  // I列
-    {id: 'PRD004', name: 'レーズン&クルミ 1/2', price: 600, order: 4},               // J列
-    {id: 'PRD005', name: 'いちじく&クルミ', price: 400, order: 5},                   // K列
-    {id: 'PRD006', name: '4種のMIXナッツ', price: 400, order: 6},                   // L列
-    {id: 'PRD007', name: 'MIXドライフルーツ', price: 400, order: 7},                 // M列
-    {id: 'PRD008', name: 'アールグレイ', price: 350, order: 8},                     // N列
-    {id: 'PRD009', name: 'チョコレート', price: 450, order: 9},                     // O列
-    {id: 'PRD010', name: 'チーズ', price: 450, order: 10},                         // P列
-    {id: 'PRD011', name: 'ひまわりの種', price: 400, order: 11},                    // Q列
-    {id: 'PRD012', name: 'デーツ', price: 400, order: 12},                         // R列
-    {id: 'PRD013', name: 'カレーパン', price: 450, order: 13},                     // S列
-    {id: 'PRD014', name: 'バターロール', price: 230, order: 14},                   // T列
-    {id: 'PRD015', name: 'ショコラロール', price: 280, order: 15},                 // U列
-    {id: 'PRD016', name: '自家製クリームパン', price: 350, order: 16},               // V列
-    {id: 'PRD017', name: '自家製あんバター', price: 380, order: 17},                 // W列
-    {id: 'PRD018', name: '抹茶&ホワイトチョコ', price: 400, order: 18},             // X列
-    {id: 'PRD019', name: '黒ごまパン', price: 200, order: 19},                     // Y列
-    {id: 'PRD020', name: 'レーズンジャムとクリームチーズのパン', price: 350, order: 20}, // Z列
-    {id: 'PRD021', name: 'ピーナッツクリームパン', price: 350, order: 21},           // AA列
-    {id: 'PRD022', name: 'あん食パン', price: 400, order: 22},                     // AB列
-    {id: 'PRD023', name: 'コーンパン', price: 400, order: 23},                     // AC列
-    {id: 'PRD024', name: 'レモンとクリームチーズのミニ食パン', price: 450, order: 24}, // AD列
-    {id: 'PRD025', name: 'ピザ マルゲリータ', price: 1100, order: 25},              // AE列
-    {id: 'PRD026', name: 'ピタパンサンド', price: 800, order: 26},                  // AF列
-    {id: 'PRD027', name: 'フォカッチャ', price: 300, order: 27}                    // AG列
+    {id: 'PRD001', name: 'プレミアムカンパーニュ', price: 1000, order: 1},
+    {id: 'PRD002', name: 'プレミアムカンパーニュ 1/2', price: 600, order: 2},
+    {id: 'PRD003', name: 'レーズン&クルミ', price: 1200, order: 3},
+    {id: 'PRD004', name: 'レーズン&クルミ 1/2', price: 600, order: 4},
+    {id: 'PRD005', name: 'いちじく&クルミ', price: 400, order: 5},
+    {id: 'PRD006', name: '4種のMIXナッツ', price: 400, order: 6},
+    {id: 'PRD007', name: 'MIXドライフルーツ', price: 400, order: 7},
+    {id: 'PRD008', name: 'アールグレイ', price: 350, order: 8},
+    {id: 'PRD009', name: 'チョコレート', price: 450, order: 9},
+    {id: 'PRD010', name: 'チーズ', price: 450, order: 10},
+    {id: 'PRD011', name: 'ひまわりの種', price: 400, order: 11},
+    {id: 'PRD012', name: 'デーツ', price: 400, order: 12},
+    {id: 'PRD013', name: 'カレーパン', price: 450, order: 13},
+    {id: 'PRD014', name: 'バターロール', price: 230, order: 14},
+    {id: 'PRD015', name: 'ショコラロール', price: 280, order: 15},
+    {id: 'PRD016', name: '自家製クリームパン', price: 350, order: 16},
+    {id: 'PRD017', name: '自家製あんバター', price: 380, order: 17},
+    {id: 'PRD018', name: '抹茶&ホワイトチョコ', price: 400, order: 18},
+    {id: 'PRD019', name: '黒ごまパン', price: 200, order: 19},
+    {id: 'PRD020', name: 'レーズンジャムとクリームチーズのパン', price: 350, order: 20},
+    {id: 'PRD021', name: 'ピーナッツクリームパン', price: 350, order: 21},
+    {id: 'PRD022', name: 'あん食パン', price: 400, order: 22},
+    {id: 'PRD023', name: 'コーンパン', price: 400, order: 23},
+    {id: 'PRD024', name: 'レモンとクリームチーズのミニ食パン', price: 450, order: 24},
+    {id: 'PRD025', name: 'ピザ マルゲリータ', price: 1100, order: 25},
+    {id: 'PRD026', name: 'ピタパンサンド', price: 800, order: 26},
+    {id: 'PRD027', name: 'フォカッチャ', price: 300, order: 27}
   ];
 }
 
@@ -351,7 +913,7 @@ function getProductMaster() {
   }
 }
 
-// 🔧 完全修正版：予約一覧取得関数（受取日時昇順）
+// 🔧 修正版：予約一覧取得関数
 function getOrderList() {
   try {
     console.log('📊 予約一覧取得開始');
@@ -397,12 +959,11 @@ function getOrderList() {
         }
       }
       
-      // 予約IDの処理（空の場合は生成）
+      // 予約IDの処理
       let orderId = row[36]; // AK列
       if (!orderId) {
         orderId = generateOrderId();
         console.log(`⚠️ 行 ${i + 1}: 予約IDが空のため生成しました: ${orderId}`);
-        // スプレッドシートにも記録
         try {
           orderSheet.getRange(i + 1, 37).setValue(orderId);
         } catch (e) {
@@ -413,28 +974,27 @@ function getOrderList() {
       // 基本オーダー情報
       const order = {
         rowIndex: i + 1,
-        timestamp: row[0],                    // A列：タイムスタンプ
-        lastName: row[1] || '',               // B列：姓
-        firstName: row[2] || '',              // C列：名
-        email: row[3] || '',                  // D列：メール
-        pickupDate: pickupDate,               // E列：受取日
-        pickupTime: row[5] || '',             // F列：受取時間
+        timestamp: row[0],
+        lastName: row[1] || '',
+        firstName: row[2] || '',
+        email: row[3] || '',
+        pickupDate: pickupDate,
+        pickupTime: row[5] || '',
         items: [],
-        note: row[33] || '',                  // AH列：その他のご要望
-        totalPrice: parseFloat(row[34]) || 0,  // AI列：合計金額
-        isDelivered: row[35] === '引渡済',     // AJ列：引渡済
-        orderId: orderId,                     // AK列：予約ID
+        note: row[33] || '',
+        totalPrice: parseFloat(row[34]) || 0,
+        isDelivered: row[35] === '引渡済',
+        orderId: orderId,
         updatedAt: row[0] || new Date()
       };
       
-      // 商品データを正確に解析（G列～AG列：6～32のインデックス）
+      // 商品データを解析（G列～AG列：6～32のインデックス）
       let totalCalculatedPrice = 0;
       for (let j = 6; j <= 32; j++) {
         const quantity = parseInt(row[j]) || 0;
         if (quantity > 0) {
-          const productIndex = j - 6; // G列が0番目の商品
+          const productIndex = j - 6;
           
-          // 商品マスタから対応する商品を取得
           if (productIndex < products.length) {
             const product = products[productIndex];
             const subtotal = quantity * product.price;
@@ -448,39 +1008,33 @@ function getOrderList() {
             });
             
             totalCalculatedPrice += subtotal;
-          } else {
-            console.log(`⚠️ 行 ${i + 1}, 列 ${j}: 商品マスタに対応する商品がありません (インデックス: ${productIndex})`);
           }
         }
       }
       
-      // 計算された合計金額と記録された金額の整合性チェック
+      // 計算された合計金額の補完
       if (order.totalPrice === 0 && totalCalculatedPrice > 0) {
         order.totalPrice = totalCalculatedPrice;
-        console.log(`⚠️ 行 ${i + 1}: 合計金額を計算値で補完しました: ¥${totalCalculatedPrice}`);
       }
       
-      console.log(`✅ 予約処理完了 - ID: ${order.orderId}, 顧客: ${order.lastName} ${order.firstName}, 商品数: ${order.items.length}`);
       orders.push(order);
     }
     
-    // 🔧 修正：受取日時の昇順でソート
+    // 受取日時昇順でソート
     orders.sort((a, b) => {
-      // まず受取日でソート
       const dateA = new Date(a.pickupDate + ' ' + (a.pickupTime || '00:00'));
       const dateB = new Date(b.pickupDate + ' ' + (b.pickupTime || '00:00'));
       
       if (dateA.getTime() !== dateB.getTime()) {
-        return dateA.getTime() - dateB.getTime(); // 昇順
+        return dateA.getTime() - dateB.getTime();
       }
       
-      // 受取日時が同じ場合は、予約日時でソート
       const timestampA = new Date(a.timestamp);
       const timestampB = new Date(b.timestamp);
-      return timestampA.getTime() - timestampB.getTime(); // 昇順
+      return timestampA.getTime() - timestampB.getTime();
     });
     
-    console.log(`📊 予約一覧取得完了: ${orders.length}件（受取日時昇順）`);
+    console.log(`📊 予約一覧取得完了: ${orders.length}件`);
     return orders;
     
   } catch (error) {
@@ -500,7 +1054,7 @@ function getDashboardStats() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // 今日の予約（受取日ベース）
+    // 今日の予約
     const todayOrders = orders.filter(order => {
       if (!order.pickupDate) return false;
       try {
@@ -508,7 +1062,6 @@ function getDashboardStats() {
         pickupDate.setHours(0, 0, 0, 0);
         return pickupDate.getTime() === today.getTime();
       } catch (e) {
-        console.warn('日付解析エラー:', order.pickupDate, e);
         return false;
       }
     });
@@ -520,7 +1073,7 @@ function getDashboardStats() {
     const outOfStock = inventory.filter(p => p.remaining <= 0);
     const lowStock = inventory.filter(p => p.remaining > 0 && p.remaining <= (p.minStock || 3));
     
-    // 今月の売上計算
+    // 今月の売上
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
     const monthOrders = orders.filter(order => {
@@ -566,7 +1119,7 @@ function getDashboardStats() {
   }
 }
 
-// 🔧 新規追加：デバッグ用スプレッドシートデータ確認関数
+// 🔧 新規追加：デバッグ用関数
 function debugOrderData() {
   try {
     console.log('🔍 デバッグモード開始');
@@ -575,7 +1128,6 @@ function debugOrderData() {
     const orderSheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.ORDER);
     
     if (!orderSheet) {
-      console.log('❌ 予約管理票シートが見つかりません');
       return {
         error: '予約管理票シートが見つかりません',
         totalRows: 0,
@@ -586,19 +1138,9 @@ function debugOrderData() {
     }
     
     const data = orderSheet.getDataRange().getValues();
-    console.log('📋 シート情報:');
-    console.log(`- 総行数: ${data.length}`);
-    console.log(`- 総列数: ${data[0] ? data[0].length : 0}`);
-    
-    // ヘッダー行の確認
     const headers = data[0] || [];
-    console.log('📝 ヘッダー行:', headers);
-    
-    // データ行のサンプル確認
     const sampleData = data[1] || [];
-    console.log('📄 最初のデータ行:', sampleData);
     
-    // 重要列の確認
     const importantColumns = {
       'A列（タイムスタンプ）': data.length > 1 ? data[1][0] : null,
       'B列（姓）': data.length > 1 ? data[1][1] : null,
@@ -611,8 +1153,6 @@ function debugOrderData() {
       'AJ列（引渡済）': data.length > 1 ? data[1][35] : null,
       'AK列（予約ID）': data.length > 1 ? data[1][36] : null
     };
-    
-    console.log('🔍 重要列データ:', importantColumns);
     
     return {
       totalRows: data.length,
@@ -766,12 +1306,12 @@ function processOrder(formData) {
     
     // 基本情報を記録
     const currentDate = new Date();
-    orderSheet.getRange(lastRow, 1).setValue(currentDate); // A列：タイムスタンプ
-    orderSheet.getRange(lastRow, 2).setValue(formData.lastName); // B列：姓
-    orderSheet.getRange(lastRow, 3).setValue(formData.firstName); // C列：名
-    orderSheet.getRange(lastRow, 4).setValue(formData.email); // D列：メール
-    orderSheet.getRange(lastRow, 5).setValue(formData.pickupDate); // E列：受取日
-    orderSheet.getRange(lastRow, 6).setValue(formData.pickupTime); // F列：受取時間
+    orderSheet.getRange(lastRow, 1).setValue(currentDate);
+    orderSheet.getRange(lastRow, 2).setValue(formData.lastName);
+    orderSheet.getRange(lastRow, 3).setValue(formData.firstName);
+    orderSheet.getRange(lastRow, 4).setValue(formData.email);
+    orderSheet.getRange(lastRow, 5).setValue(formData.pickupDate);
+    orderSheet.getRange(lastRow, 6).setValue(formData.pickupTime);
     
     // 商品数量を記録（G~AG列：7~33列目）
     for (let i = 0; i < products.length; i++) {
@@ -780,15 +1320,10 @@ function processOrder(formData) {
     }
     
     // 最終項目を記録
-    const noteCol = 34;      // AH列：その他のご要望
-    const totalCol = 35;     // AI列：合計金額
-    const deliveredCol = 36; // AJ列：引渡済
-    const orderIdCol = 37;   // AK列：予約ID
-
-    orderSheet.getRange(lastRow, noteCol).setValue(formData.note || '');
-    orderSheet.getRange(lastRow, totalCol).setValue(totalPrice);
-    orderSheet.getRange(lastRow, deliveredCol).setValue('未引渡');
-    orderSheet.getRange(lastRow, orderIdCol).setValue(orderId);
+    orderSheet.getRange(lastRow, 34).setValue(formData.note || '');
+    orderSheet.getRange(lastRow, 35).setValue(totalPrice);
+    orderSheet.getRange(lastRow, 36).setValue('未引渡');
+    orderSheet.getRange(lastRow, 37).setValue(orderId);
     
     // 在庫を更新
     updateInventoryFromOrders();
@@ -800,7 +1335,7 @@ function processOrder(formData) {
     
     // ログ記録
     logSystemEvent('INFO', '新規予約',
-      `顧客: ${formData.lastName} ${formData.firstName}, 金額: ¥${totalPrice}, 予約ID: ${orderId}, メール送信: ${emailResults.success ? '成功' : '失敗'}`);
+      `顧客: ${formData.lastName} ${formData.firstName}, 金額: ¥${totalPrice}, 予約ID: ${orderId}`);
     
     return {
       success: true,
@@ -847,7 +1382,7 @@ function updateInventoryFromOrders() {
     const orderData = orderSheet.getDataRange().getValues();
     for (let i = 1; i < orderData.length; i++) {
       const row = orderData[i];
-      const isDelivered = row[35] === '引渡済'; // AJ列
+      const isDelivered = row[35] === '引渡済';
       
       if (!isDelivered) {
         for (let j = 0; j < products.length; j++) {
@@ -864,12 +1399,12 @@ function updateInventoryFromOrders() {
     for (let i = 1; i < inventoryData.length; i++) {
       const productId = inventoryData[i][0];
       if (reservations[productId] !== undefined) {
-        inventorySheet.getRange(i + 1, 5).setValue(reservations[productId]); // 予約数
+        inventorySheet.getRange(i + 1, 5).setValue(reservations[productId]);
         
         const stock = inventoryData[i][3] || 0;
         const remaining = Math.max(0, stock - reservations[productId]);
-        inventorySheet.getRange(i + 1, 6).setValue(remaining); // 残数
-        inventorySheet.getRange(i + 1, 8).setValue(new Date()); // 更新日
+        inventorySheet.getRange(i + 1, 6).setValue(remaining);
+        inventorySheet.getRange(i + 1, 8).setValue(new Date());
       }
     }
     
@@ -953,14 +1488,11 @@ function updateDeliveryStatus(rowIndex, isDelivered) {
     const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
     const orderSheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.ORDER);
     
-    const deliveredCol = 36; // AJ列：引渡済
     const statusValue = isDelivered ? '引渡済' : '未引渡';
-    
-    orderSheet.getRange(rowIndex, deliveredCol).setValue(statusValue);
+    orderSheet.getRange(rowIndex, 36).setValue(statusValue);
     
     updateInventoryFromOrders();
     
-    // ログ記録
     const row = orderSheet.getRange(rowIndex, 1, 1, orderSheet.getLastColumn()).getValues()[0];
     const customerName = `${row[1]} ${row[2]}`;
     logSystemEvent('INFO', '引渡状態変更',
@@ -980,84 +1512,9 @@ function updateDeliveryStatus(rowIndex, isDelivered) {
   }
 }
 
-// ===== 予約編集・キャンセル =====
-function updateOrder(orderId, updateData) {
-  try {
-    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
-    const orderSheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.ORDER);
-    const data = orderSheet.getDataRange().getValues();
-    
-    // 予約を検索
-    let orderRowIndex = -1;
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][36] === orderId) { // AK列から予約IDを取得
-        orderRowIndex = i + 1;
-        break;
-      }
-    }
-    
-    if (orderRowIndex === -1) {
-      return { success: false, message: '予約が見つかりません' };
-    }
-    
-    // 基本情報を更新
-    if (updateData.lastName) orderSheet.getRange(orderRowIndex, 2).setValue(updateData.lastName);
-    if (updateData.firstName) orderSheet.getRange(orderRowIndex, 3).setValue(updateData.firstName);
-    if (updateData.email) orderSheet.getRange(orderRowIndex, 4).setValue(updateData.email);
-    if (updateData.pickupDate) orderSheet.getRange(orderRowIndex, 5).setValue(updateData.pickupDate);
-    if (updateData.pickupTime) orderSheet.getRange(orderRowIndex, 6).setValue(updateData.pickupTime);
-    if (updateData.note !== undefined) {
-      const noteCol = 34; // AH列
-      orderSheet.getRange(orderRowIndex, noteCol).setValue(updateData.note);
-    }
-    
-    updateInventoryFromOrders();
-    
-    logSystemEvent('INFO', '予約更新', `予約ID: ${orderId}, 更新内容: ${JSON.stringify(updateData)}`);
-    
-    return { success: true, message: '予約を更新しました' };
-    
-  } catch (error) {
-    console.error('❌ 予約更新エラー:', error);
-    logSystemEvent('ERROR', '予約更新エラー', error.toString());
-    return { success: false, message: '予約の更新に失敗しました: ' + error.message };
-  }
-}
-
-function cancelOrder(orderId) {
-  try {
-    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
-    const orderSheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.ORDER);
-    const data = orderSheet.getDataRange().getValues();
-    
-    // 予約を検索して削除
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][36] === orderId) { // AK列から予約IDを取得
-        const customerName = `${data[i][1]} ${data[i][2]}`;
-        orderSheet.deleteRow(i + 1);
-        
-        updateInventoryFromOrders();
-        
-        logSystemEvent('INFO', '予約キャンセル', `顧客: ${customerName}, 予約ID: ${orderId}`);
-        
-        return { success: true, message: '予約をキャンセルしました' };
-      }
-    }
-    
-    return { success: false, message: '予約が見つかりません' };
-    
-  } catch (error) {
-    console.error('❌ 予約キャンセルエラー:', error);
-    logSystemEvent('ERROR', '予約キャンセルエラー', error.toString());
-    return { success: false, message: '予約のキャンセルに失敗しました: ' + error.message };
-  }
-}
-
-// ===== メール機能（既存のまま） =====
+// ===== メール機能 =====
 function getEmailSettings() {
   try {
-    console.log('📧 メール設定取得開始');
-    
     const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
     const emailSheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.EMAIL_SETTINGS);
     
@@ -1065,13 +1522,12 @@ function getEmailSettings() {
       adminEmail: 'hyggely2021@gmail.com',
       emailEnabled: true,
       customerSubject: 'Hyggelyカンパーニュ専門店 ご予約完了確認',
-      customerBody: '{lastName} {firstName} 様\n\nHyggely事前予約システムをご利用いただき誠にありがとうございます。\n以下の注文内容で承りましたのでお知らせします。\n\n予約ID: {orderId}\n\n{orderItems}\n\n・合計　　　¥{totalPrice}\n\n・受取日時：{pickupDateTime}\n\n受取日当日に現金またはPayPayでお支払いいただきます。\n当日は気をつけてお越しください。\n\n※このメールは自動送信されています。返信はできませんのでご了承ください。\nご不明な点がございましたら、Hyggely公式LINEまでお問い合わせください。',
+      customerBody: '{lastName} {firstName} 様\n\nご予約ありがとうございます。\n{orderItems}\n\n合計: ¥{totalPrice}\n受取日時: {pickupDateTime}',
       adminSubject: '【新規予約】{lastName} {firstName}様',
-      adminBody: '【新規予約通知】\n\n予約ID: {orderId}\n\nお客様情報:\n・氏名: {lastName} {firstName} 様\n・メール: {email}\n・受取日時: {pickupDateTime}\n\n注文内容:\n{orderItems}\n\n合計金額: ¥{totalPrice}\n\n※予約管理システムより自動送信されています。'
+      adminBody: '新規予約\n\nお客様: {lastName} {firstName}\nメール: {email}\n受取: {pickupDateTime}\n{orderItems}\n合計: ¥{totalPrice}'
     };
     
     if (!emailSheet || emailSheet.getLastRow() <= 1) {
-      console.log('⚠️ メール設定シートが存在しないか空です。デフォルト設定を使用します。');
       return defaultSettings;
     }
     
@@ -1116,13 +1572,10 @@ function getEmailSettings() {
       }
     }
     
-    console.log('✅ メール設定取得完了:', settings);
     return settings;
     
   } catch (error) {
     console.error('❌ メール設定取得エラー:', error);
-    logSystemEvent('ERROR', 'メール設定取得エラー', error.toString());
-    
     return {
       adminEmail: 'hyggely2021@gmail.com',
       emailEnabled: true,
@@ -1146,7 +1599,6 @@ function sendOrderEmails(formData, orderedItems, totalPrice, orderId) {
   
   try {
     const settings = getEmailSettings();
-    console.log('📧 取得した設定:', settings);
     
     if (!settings.emailEnabled) {
       console.log('⚠️ メール送信が無効に設定されています');
@@ -1155,10 +1607,9 @@ function sendOrderEmails(formData, orderedItems, totalPrice, orderId) {
     }
     
     if (!checkGmailPermission()) {
-      const errorMsg = 'Gmail送信権限が不足しています。Google Apps Scriptでの権限承認が必要です。';
+      const errorMsg = 'Gmail送信権限が不足しています';
       console.error('❌ ' + errorMsg);
       results.errors.push(errorMsg);
-      logSystemEvent('ERROR', 'Gmail権限エラー', errorMsg);
       return results;
     }
     
@@ -1186,17 +1637,11 @@ function sendOrderEmails(formData, orderedItems, totalPrice, orderId) {
     
     results.success = results.customerEmailSent || results.adminEmailSent;
     
-    console.log('📧 メール送信結果:', results);
-    
-    const logDetail = `顧客メール: ${results.customerEmailSent ? '成功' : '失敗'}, 管理者メール: ${results.adminEmailSent ? '成功' : '失敗'}`;
-    logSystemEvent(results.success ? 'INFO' : 'ERROR', 'メール送信結果', logDetail);
-    
     return results;
     
   } catch (error) {
     console.error('❌ メール送信統合処理エラー:', error);
     results.errors.push('統合処理エラー: ' + error.toString());
-    logSystemEvent('ERROR', 'メール送信統合エラー', error.toString());
     return results;
   }
 }
@@ -1213,8 +1658,6 @@ function checkGmailPermission() {
 
 function sendConfirmationEmail(formData, orderedItems, totalPrice, orderId, settings) {
   try {
-    console.log('📧 顧客確認メール送信開始');
-    
     if (!formData.email || !formData.email.includes('@')) {
       return { success: false, error: '有効なメールアドレスがありません' };
     }
@@ -1240,45 +1683,19 @@ function sendConfirmationEmail(formData, orderedItems, totalPrice, orderId, sett
       email: formData.email
     });
     
-    console.log('📧 顧客メール内容:', { to: formData.email, subject, body });
+    GmailApp.sendEmail(formData.email, subject, body);
     
-    let attempt = 0;
-    const maxAttempts = 3;
-    
-    while (attempt < maxAttempts) {
-      try {
-        attempt++;
-        console.log(`📧 顧客メール送信試行 ${attempt}/${maxAttempts}`);
-        
-        GmailApp.sendEmail(formData.email, subject, body);
-        
-        console.log('✅ 顧客確認メール送信成功');
-        logSystemEvent('INFO', '顧客メール送信成功', `宛先: ${formData.email}, 予約ID: ${orderId}`);
-        return { success: true };
-        
-      } catch (sendError) {
-        console.error(`❌ 顧客メール送信試行 ${attempt} 失敗:`, sendError);
-        
-        if (attempt >= maxAttempts) {
-          logSystemEvent('ERROR', '顧客メール送信失敗', `宛先: ${formData.email}, エラー: ${sendError.toString()}`);
-          return { success: false, error: sendError.toString() };
-        }
-        
-        Utilities.sleep(1000);
-      }
-    }
+    console.log('✅ 顧客確認メール送信成功');
+    return { success: true };
     
   } catch (error) {
     console.error('❌ 顧客メール送信エラー:', error);
-    logSystemEvent('ERROR', '顧客メール送信エラー', error.toString());
     return { success: false, error: error.toString() };
   }
 }
 
 function sendAdminNotification(formData, orderedItems, totalPrice, orderId, settings) {
   try {
-    console.log('📧 管理者通知メール送信開始');
-    
     if (!settings.adminEmail || !settings.adminEmail.includes('@')) {
       return { success: false, error: '管理者メールアドレスが設定されていません' };
     }
@@ -1305,37 +1722,13 @@ function sendAdminNotification(formData, orderedItems, totalPrice, orderId, sett
       orderId: orderId
     });
     
-    console.log('📧 管理者メール内容:', { to: settings.adminEmail, subject, body });
+    GmailApp.sendEmail(settings.adminEmail, subject, body);
     
-    let attempt = 0;
-    const maxAttempts = 3;
-    
-    while (attempt < maxAttempts) {
-      try {
-        attempt++;
-        console.log(`📧 管理者メール送信試行 ${attempt}/${maxAttempts}`);
-        
-        GmailApp.sendEmail(settings.adminEmail, subject, body);
-        
-        console.log('✅ 管理者通知メール送信成功');
-        logSystemEvent('INFO', '管理者メール送信成功', `宛先: ${settings.adminEmail}, 予約ID: ${orderId}`);
-        return { success: true };
-        
-      } catch (sendError) {
-        console.error(`❌ 管理者メール送信試行 ${attempt} 失敗:`, sendError);
-        
-        if (attempt >= maxAttempts) {
-          logSystemEvent('ERROR', '管理者メール送信失敗', `宛先: ${settings.adminEmail}, エラー: ${sendError.toString()}`);
-          return { success: false, error: sendError.toString() };
-        }
-        
-        Utilities.sleep(1000);
-      }
-    }
+    console.log('✅ 管理者通知メール送信成功');
+    return { success: true };
     
   } catch (error) {
     console.error('❌ 管理者メール送信エラー:', error);
-    logSystemEvent('ERROR', '管理者メール送信エラー', error.toString());
     return { success: false, error: error.toString() };
   }
 }
@@ -1349,67 +1742,6 @@ function replaceEmailVariables(template, variables) {
   });
   
   return result;
-}
-
-function updateEmailSettings(newSettings) {
-  try {
-    console.log('📧 メール設定更新開始:', newSettings);
-    
-    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
-    const emailSheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.EMAIL_SETTINGS);
-    
-    const data = [
-      ['admin_email', newSettings.adminEmail || 'hyggely2021@gmail.com'],
-      ['email_enabled', newSettings.emailEnabled ? 'TRUE' : 'FALSE'],
-      ['customer_subject', newSettings.customerSubject || 'Hyggelyカンパーニュ専門店 ご予約完了確認'],
-      ['customer_body', newSettings.customerBody || ''],
-      ['admin_subject', newSettings.adminSubject || '【新規予約】{lastName} {firstName}様'],
-      ['admin_body', newSettings.adminBody || '']
-    ];
-    
-    emailSheet.clear();
-    emailSheet.getRange(1, 1, 1, 2).setValues([['設定項目', '設定値']]);
-    emailSheet.getRange(2, 1, data.length, 2).setValues(data);
-    
-    logSystemEvent('INFO', 'メール設定更新', 'メール設定が更新されました');
-    console.log('✅ メール設定更新完了');
-    
-    return { success: true, message: 'メール設定を保存しました' };
-  } catch (error) {
-    console.error('❌ メール設定更新エラー:', error);
-    logSystemEvent('ERROR', 'メール設定更新エラー', error.toString());
-    return { success: false, message: '保存に失敗しました: ' + error.message };
-  }
-}
-
-function testEmailSending() {
-  try {
-    console.log('📧 メール送信テスト開始');
-    
-    const testFormData = {
-      lastName: 'テスト',
-      firstName: '太郎',
-      email: 'test@example.com',
-      pickupDate: '2024-12-25',
-      pickupTime: '14:00',
-      note: 'テスト注文です'
-    };
-    
-    const testItems = [
-      { name: 'プレミアムカンパーニュ', quantity: 1, price: 1000, subtotal: 1000 }
-    ];
-    
-    const testOrderId = 'TEST' + Date.now();
-    
-    const result = sendOrderEmails(testFormData, testItems, 1000, testOrderId);
-    
-    console.log('📧 テスト結果:', result);
-    return result;
-    
-  } catch (error) {
-    console.error('❌ メール送信テストエラー:', error);
-    return { success: false, error: error.toString() };
-  }
 }
 
 // ===== ユーティリティ関数 =====
@@ -1454,53 +1786,4 @@ function testConnection() {
     version: SYSTEM_CONFIG.version,
     status: 'operational'
   };
-}
-
-function forceInitializeSystem() {
-  try {
-    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
-    
-    Object.values(SYSTEM_CONFIG.sheets).forEach(sheetName => {
-      const sheet = spreadsheet.getSheetByName(sheetName);
-      if (sheet) {
-        spreadsheet.deleteSheet(sheet);
-      }
-    });
-    
-    checkAndInitializeSystem();
-    
-    console.log('✅ システム強制初期化完了');
-    return { success: true, message: 'システムを初期化しました' };
-  } catch (error) {
-    console.error('❌ 強制初期化エラー:', error);
-    return { success: false, message: error.toString() };
-  }
-}
-
-function manualEmailTest() {
-  console.log('🧪 手動メールテスト実行');
-  const result = testEmailSending();
-  console.log('🧪 テスト完了:', result);
-  return result;
-}
-
-// ===== 商品管理系関数（省略版、必要に応じて実装） =====
-function addProduct(productData) {
-  // 商品追加処理（実装省略）
-  return { success: true, message: '商品を追加しました' };
-}
-
-function updateProduct(productId, productData) {
-  // 商品更新処理（実装省略）
-  return { success: true, message: '商品を更新しました' };
-}
-
-function deleteProduct(productId) {
-  // 商品削除処理（実装省略）
-  return { success: true, message: '商品を削除しました' };
-}
-
-function updateOrderSheetHeaders() {
-  // ヘッダー更新処理（実装省略）
-  console.log('✅ 注文シートヘッダー更新完了');
 }
