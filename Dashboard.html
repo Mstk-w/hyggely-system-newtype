@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Hyggelyカンパーニュ専門店 管理者ダッシュボード v5.2.3</title>
+  <title>Hyggelyカンパーニュ専門店 管理者ダッシュボード v5.3.0</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <style>
@@ -94,7 +94,7 @@
       vertical-align: middle;
     }
     
-    /* 予約テーブルのスタイル改善 */
+    /* 予約テーブルの最適化 */
     .orders-table {
       font-size: 0.8rem;
     }
@@ -150,6 +150,33 @@
     }
     .loading.show { display: block; }
     
+    /* 🔧 新規追加：エラー表示 */
+    .error-container {
+      display: none;
+      text-align: center;
+      padding: 3rem;
+      background: #fff;
+      border-radius: 15px;
+      margin: 2rem 0;
+    }
+    .error-container.show { display: block; }
+    .error-icon {
+      font-size: 4rem;
+      color: #dc3545;
+      margin-bottom: 1rem;
+    }
+    
+    /* 🔧 新規追加：オフライン表示 */
+    .offline-mode {
+      background: #fff3cd;
+      border: 1px solid #ffeaa7;
+      color: #856404;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    
     /* ステータス表示 */
     .status-indicator {
       position: fixed;
@@ -161,9 +188,30 @@
       padding: 8px 15px;
       border-radius: 20px;
       font-size: 0.8rem;
+      transition: all 0.3s ease;
     }
     
-    /* モーダルカスタマイズ */
+    /* 🔧 新規追加：接続状態表示 */
+    .connection-status {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+      padding: 8px 15px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      transition: all 0.3s ease;
+    }
+    .connection-status.online {
+      background: rgba(40, 167, 69, 0.9);
+      color: white;
+    }
+    .connection-status.offline {
+      background: rgba(220, 53, 69, 0.9);
+      color: white;
+    }
+    
+    /* モーダル */
     .modal-xl { max-width: 90%; }
     .modal-header {
       background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
@@ -198,7 +246,24 @@
       border-radius: 4px;
     }
     
-    /* デバッグ情報表示用 */
+    /* 🔧 新規追加：スケルトンローディング */
+    .skeleton {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: skeleton-loading 1.2s infinite linear;
+      border-radius: 6px;
+      height: 20px;
+      margin-bottom: 8px;
+    }
+    .skeleton-title { width: 60%; height: 24px; }
+    .skeleton-text { width: 80%; height: 16px; }
+    .skeleton-number { width: 40%; height: 32px; }
+    @keyframes skeleton-loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    
+    /* デバッグ情報表示 */
     .debug-info {
       background: #f8f9fa;
       border: 1px solid #dee2e6;
@@ -272,50 +337,48 @@
       box-shadow: 0 4px 15px rgba(139, 69, 19, 0.1);
     }
     
-    .week-calendar {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 10px;
-      margin: 1rem 0;
-    }
-    
-    .week-day {
+    /* 🔧 新規追加：リトライボタン */
+    .retry-section {
       text-align: center;
-      padding: 10px;
-      border-radius: 8px;
-      background: #f8f9fa;
-      border: 1px solid #dee2e6;
-      cursor: pointer;
-      transition: all 0.3s ease;
+      padding: 2rem;
+      background: white;
+      border-radius: 15px;
+      margin: 2rem 0;
     }
     
-    .week-day:hover {
-      background: #e9ecef;
-    }
-    
-    .week-day.has-orders {
-      background: #d4edda;
-      border-color: #c3e6cb;
-    }
-    
-    .week-day.today {
-      background: #fff3cd;
-      border-color: #ffeaa7;
-      font-weight: bold;
+    /* 🔧 新規追加：バージョン表示 */
+    .version-info {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      z-index: 1000;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
     }
   </style>
 </head>
 <body>
+  <!-- 🔧 新規追加：バージョン表示 -->
+  <div class="version-info">v5.3.0</div>
+  
   <!-- ステータス表示 -->
   <div class="status-indicator pulse" id="status">
     <i class="bi bi-wifi"></i> 接続中
+  </div>
+  
+  <!-- 🔧 新規追加：接続状態表示 -->
+  <div class="connection-status online" id="connection-status">
+    <i class="bi bi-wifi"></i> オンライン
   </div>
 
   <!-- ナビゲーション -->
   <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
     <div class="container-fluid">
       <a class="navbar-brand" href="#">
-        <i class="bi bi-shop me-2"></i>Hyggely管理ダッシュボード v5.2.3
+        <i class="bi bi-shop me-2"></i>Hyggely管理ダッシュボード v5.3.0
       </a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
         <span class="navbar-toggler-icon"></span>
@@ -337,16 +400,40 @@
           <a class="nav-link" href="#" onclick="exportData()">
             <i class="bi bi-download me-1"></i>エクスポート
           </a>
+          <a class="nav-link" href="#" onclick="clearSystemCache()">
+            <i class="bi bi-trash me-1"></i>キャッシュクリア
+          </a>
         </div>
       </div>
     </div>
   </nav>
 
   <div class="container-fluid py-3">
-    <!-- デバッグ情報パネル -->
+    <!-- 🔧 新規追加：オフラインモード表示 -->
+    <div class="offline-mode" id="offline-mode" style="display: none;">
+      <i class="bi bi-wifi-off me-2"></i>
+      <strong>オフラインモード</strong> - 一部の機能が制限されています。インターネット接続を確認してください。
+    </div>
+
+    <!-- 🔧 新規追加：初期化エラー表示 -->
+    <div class="error-container" id="init-error">
+      <div class="error-icon">⚠️</div>
+      <h3>初期化エラー</h3>
+      <p id="init-error-message">Google Apps Scriptとの接続に失敗しました。</p>
+      <div class="retry-section">
+        <button class="btn btn-primary me-2" onclick="retryInitialization()">
+          <i class="bi bi-arrow-clockwise me-1"></i>再試行
+        </button>
+        <button class="btn btn-outline-secondary" onclick="useOfflineMode()">
+          <i class="bi bi-wifi-off me-1"></i>オフラインモードで続行
+        </button>
+      </div>
+    </div>
+
+    <!-- 🔧 修正版：デバッグ情報パネル -->
     <div class="card mb-3" id="debug-panel" style="display: none;">
       <div class="card-header">
-        <i class="bi bi-bug me-2"></i>デバッグ情報
+        <i class="bi bi-bug me-2"></i>デバッグ情報 v5.3.0
         <button class="btn btn-sm btn-outline-secondary float-end" onclick="hideDebugPanel()">
           <i class="bi bi-x"></i> 閉じる
         </button>
@@ -392,37 +479,32 @@
         </div>
 
         <div id="overview-content" style="display: none;">
-          <!-- 統計カード -->
-          <div class="quick-stats mb-4">
-            <div class="quick-stat border-primary">
-              <i class="bi bi-calendar-check text-primary" style="font-size: 2rem;"></i>
-              <p class="stat-number text-primary" id="today-orders">0</p>
-              <p class="mb-0 fw-semibold">今日の予約</p>
+          <!-- 統計カード（スケルトン対応） -->
+          <div class="quick-stats mb-4" id="stats-container">
+            <!-- スケルトンローディング -->
+            <div class="quick-stat skeleton-stat">
+              <div class="skeleton skeleton-number"></div>
+              <div class="skeleton skeleton-text"></div>
             </div>
-            <div class="quick-stat border-warning">
-              <i class="bi bi-clock text-warning" style="font-size: 2rem;"></i>
-              <p class="stat-number text-warning" id="pending-orders">0</p>
-              <p class="mb-0 fw-semibold">未引渡</p>
+            <div class="quick-stat skeleton-stat">
+              <div class="skeleton skeleton-number"></div>
+              <div class="skeleton skeleton-text"></div>
             </div>
-            <div class="quick-stat border-success">
-              <i class="bi bi-currency-yen text-success" style="font-size: 2rem;"></i>
-              <p class="stat-number text-success" id="month-revenue">¥0</p>
-              <p class="mb-0 fw-semibold">今月の売上</p>
+            <div class="quick-stat skeleton-stat">
+              <div class="skeleton skeleton-number"></div>
+              <div class="skeleton skeleton-text"></div>
             </div>
-            <div class="quick-stat border-info">
-              <i class="bi bi-cash text-info" style="font-size: 2rem;"></i>
-              <p class="stat-number text-info" id="today-revenue">¥0</p>
-              <p class="mb-0 fw-semibold">今日の売上</p>
+            <div class="quick-stat skeleton-stat">
+              <div class="skeleton skeleton-number"></div>
+              <div class="skeleton skeleton-text"></div>
             </div>
-            <div class="quick-stat border-danger">
-              <i class="bi bi-exclamation-triangle text-danger" style="font-size: 2rem;"></i>
-              <p class="stat-number text-danger" id="alert-count">0</p>
-              <p class="mb-0 fw-semibold">在庫アラート</p>
+            <div class="quick-stat skeleton-stat">
+              <div class="skeleton skeleton-number"></div>
+              <div class="skeleton skeleton-text"></div>
             </div>
-            <div class="quick-stat border-secondary">
-              <i class="bi bi-graph-up text-secondary" style="font-size: 2rem;"></i>
-              <p class="stat-number text-secondary" id="total-products">0</p>
-              <p class="mb-0 fw-semibold">商品数</p>
+            <div class="quick-stat skeleton-stat">
+              <div class="skeleton skeleton-number"></div>
+              <div class="skeleton skeleton-text"></div>
             </div>
           </div>
 
@@ -626,10 +708,32 @@
               <i class="bi bi-plus-circle me-2"></i>新商品追加
             </div>
             <div class="card-body">
-              <div class="alert alert-info">
-                <i class="bi bi-info-circle me-2"></i>
-                商品管理機能は開発中です。現在は閲覧のみ可能です。
-              </div>
+              <form id="add-product-form" class="product-form">
+                <div class="row">
+                  <div class="col-md-4">
+                    <label class="form-label">商品名 <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="new-product-name" required>
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label">価格 <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="new-product-price" min="0" required>
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label">表示順</label>
+                    <input type="number" class="form-control" id="new-product-order" min="1">
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label">初期在庫</label>
+                    <input type="number" class="form-control" id="new-product-stock" min="0" value="10">
+                  </div>
+                  <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <button type="button" class="btn btn-primary w-100" onclick="addNewProduct()">
+                      <i class="bi bi-plus me-1"></i>追加
+                    </button>
+                  </div>
+                </div>
+              </form>
             </div>
           </div>
           
@@ -667,6 +771,7 @@
     </div>
   </div>
 
+  <!-- 🔧 既存のモーダル（変更なし） -->
   <!-- 予約詳細モーダル -->
   <div class="modal fade" id="orderDetailModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
@@ -771,86 +876,480 @@
     </div>
   </div>
 
+  <!-- 商品編集モーダル -->
+  <div class="modal fade" id="editProductModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">商品編集</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="edit-product-form">
+            <input type="hidden" id="edit-product-id">
+            <div class="mb-3">
+              <label class="form-label">商品名 <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="edit-product-name" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">価格 <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" id="edit-product-price" min="0" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">表示順</label>
+              <input type="number" class="form-control" id="edit-product-order" min="1">
+            </div>
+            <div class="mb-3">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="edit-product-enabled">
+                <label class="form-check-label" for="edit-product-enabled">
+                  商品を有効にする
+                </label>
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+          <button type="button" class="btn btn-primary" onclick="saveProductEdit()">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    // 🔧 グローバル状態管理（改良版）
     let currentData = { stats: {}, orders: [], inventory: [], products: [] };
     let updateInterval;
     let currentOrderPage = 1;
     const ordersPerPage = 20;
+    let isOnline = true;
+    let systemInitialized = false;
+    let retryCount = 0;
+    const maxRetries = 3;
 
-    // 初期化
+    // 🔧 初期化（完全修正版）
     document.addEventListener('DOMContentLoaded', function() {
-      console.log('🚀 管理者ダッシュボード起動 v5.2.3 - エラー解決版');
+      console.log('🚀 管理者ダッシュボード起動 v5.3.0 - 完全修正版');
       
+      // 接続状態監視
+      initializeConnectionMonitor();
+      
+      // システム初期化
+      initializeSystem();
+      
+      // イベントリスナー設定
+      setupEventListeners();
+      
+      // 初期データ読み込み試行
+      attemptDataLoad();
+    });
+
+    // 🔧 新規追加：接続状態監視
+    function initializeConnectionMonitor() {
+      const connectionStatus = document.getElementById('connection-status');
+      
+      // オンライン/オフライン検出
+      window.addEventListener('online', function() {
+        isOnline = true;
+        connectionStatus.className = 'connection-status online';
+        connectionStatus.innerHTML = '<i class="bi bi-wifi"></i> オンライン';
+        hideOfflineMode();
+        if (!systemInitialized) {
+          attemptDataLoad();
+        }
+      });
+      
+      window.addEventListener('offline', function() {
+        isOnline = false;
+        connectionStatus.className = 'connection-status offline';
+        connectionStatus.innerHTML = '<i class="bi bi-wifi-off"></i> オフライン';
+        showOfflineMode();
+      });
+    }
+
+    // 🔧 新規追加：システム初期化
+    function initializeSystem() {
+      try {
+        // Google Apps Script環境チェック
+        if (typeof google === 'undefined' || !google.script || !google.script.run) {
+          console.warn('⚠️ Google Apps Script環境が検出されませんでした');
+          throw new Error('Google Apps Script環境が利用できません');
+        }
+        
+        console.log('✅ Google Apps Script環境を確認しました');
+        return true;
+      } catch (error) {
+        console.error('❌ システム初期化エラー:', error);
+        return false;
+      }
+    }
+
+    // 🔧 新規追加：データ読み込み試行
+    function attemptDataLoad() {
+      if (!isOnline) {
+        showOfflineMode();
+        return;
+      }
+      
+      if (retryCount >= maxRetries) {
+        showInitError('最大試行回数に到達しました。システム管理者にお問い合わせください。');
+        return;
+      }
+      
+      retryCount++;
+      updateStatus(`初期化試行 ${retryCount}/${maxRetries}`, 'loading');
+      
+      // Google Apps Script接続テスト
+      setTimeout(() => {
+        testGoogleScriptConnection()
+          .then(() => {
+            console.log('✅ Google Apps Script接続成功');
+            systemInitialized = true;
+            hideInitError();
+            loadTabData('overview');
+            startAutoUpdate();
+            updateStatus('ダッシュボード起動完了', 'success');
+          })
+          .catch(error => {
+            console.error('❌ Google Apps Script接続失敗:', error);
+            if (retryCount < maxRetries) {
+              updateStatus(`接続失敗、再試行中... (${retryCount}/${maxRetries})`, 'loading');
+              setTimeout(() => attemptDataLoad(), 2000 * retryCount); // 段階的遅延
+            } else {
+              showInitError('Google Apps Scriptとの接続に失敗しました。ページを更新してお試しください。');
+            }
+          });
+      }, 1000);
+    }
+
+    // 🔧 新規追加：Google Apps Script接続テスト
+    function testGoogleScriptConnection() {
+      return new Promise((resolve, reject) => {
+        try {
+          // タイムアウト設定
+          const timeout = setTimeout(() => {
+            reject(new Error('接続タイムアウト'));
+          }, 10000);
+          
+          google.script.run
+            .withSuccessHandler(function(result) {
+              clearTimeout(timeout);
+              resolve(result);
+            })
+            .withFailureHandler(function(error) {
+              clearTimeout(timeout);
+              reject(error);
+            })
+            .testConnection();
+        } catch (error) {
+          reject(error);
+        }
+      });
+    }
+
+    // 🔧 新規追加：初期化エラー表示
+    function showInitError(message) {
+      const errorDiv = document.getElementById('init-error');
+      const messageDiv = document.getElementById('init-error-message');
+      messageDiv.textContent = message;
+      errorDiv.classList.add('show');
+      updateStatus('初期化エラー', 'error');
+    }
+
+    function hideInitError() {
+      const errorDiv = document.getElementById('init-error');
+      errorDiv.classList.remove('show');
+    }
+
+    function retryInitialization() {
+      retryCount = 0;
+      hideInitError();
+      attemptDataLoad();
+    }
+
+    function useOfflineMode() {
+      hideInitError();
+      showOfflineMode();
+      loadOfflineData();
+    }
+
+    // 🔧 新規追加：オフラインモード
+    function showOfflineMode() {
+      const offlineDiv = document.getElementById('offline-mode');
+      offlineDiv.style.display = 'block';
+    }
+
+    function hideOfflineMode() {
+      const offlineDiv = document.getElementById('offline-mode');
+      offlineDiv.style.display = 'none';
+    }
+
+    function loadOfflineData() {
+      // オフライン用のダミーデータ
+      const offlineStats = {
+        todayOrdersCount: '?',
+        pendingOrdersCount: '?',
+        outOfStockCount: '?',
+        lowStockCount: '?',
+        totalProducts: '?',
+        todayRevenue: '?',
+        monthRevenue: '?',
+        systemVersion: '5.3.0',
+        lastUpdate: new Date().toISOString()
+      };
+      
+      currentData = { 
+        stats: offlineStats, 
+        orders: [], 
+        inventory: [], 
+        products: [] 
+      };
+      
+      renderOverview();
+      hideLoading('overview');
+      updateStatus('オフラインモード', 'error');
+    }
+
+    // イベントリスナー設定
+    function setupEventListeners() {
       // タブ切り替えイベント
       document.querySelectorAll('[data-bs-toggle="pill"]').forEach(tab => {
         tab.addEventListener('shown.bs.tab', function(event) {
           const targetId = event.target.getAttribute('data-bs-target').substring(1);
-          loadTabData(targetId);
+          if (systemInitialized) {
+            loadTabData(targetId);
+          }
         });
       });
+    }
 
-      // 初期データ読み込み
-      loadTabData('overview');
-      startAutoUpdate();
-      updateStatus('ダッシュボード起動完了', 'success');
-    });
+    // タブデータ読み込み（エラーハンドリング強化）
+    function loadTabData(tabId) {
+      if (!systemInitialized) {
+        console.log('⚠️ システム未初期化のため、タブデータ読み込みをスキップします');
+        return;
+      }
+      
+      switch(tabId) {
+        case 'overview': 
+          loadOverviewData(); 
+          break;
+        case 'orders': 
+          loadOrdersData(); 
+          break;
+        case 'inventory': 
+          loadInventoryData(); 
+          break;
+        case 'menu': 
+          loadMenuData(); 
+          break;
+      }
+    }
 
-    // デバッグ機能
+    // 🔧 修正版：概要データ読み込み（エラーハンドリング強化）
+    function loadOverviewData() {
+      showLoading('overview');
+      updateStatus('統計データ読み込み中', 'loading');
+      
+      // スケルトンローディング表示
+      showSkeletonStats();
+      
+      Promise.all([
+        safeCallGoogleScript('getDashboardStats'),
+        safeCallGoogleScript('getInventoryDataForForm'),
+        safeCallGoogleScript('getOrderList')
+      ]).then(([stats, inventory, orders]) => {
+        console.log('📊 取得データ:', { 
+          stats: stats, 
+          inventoryCount: inventory?.length || 0, 
+          ordersCount: orders?.length || 0 
+        });
+        
+        currentData = { 
+          stats: stats || {}, 
+          inventory: inventory || [], 
+          orders: orders || [] 
+        };
+        
+        renderOverview();
+        hideLoading('overview');
+        updateStatus('更新完了', 'success');
+      }).catch(error => {
+        console.error('概要データ取得エラー:', error);
+        showError('overview', '統計データの取得に失敗しました: ' + error);
+        updateStatus('取得エラー', 'error');
+      });
+    }
+
+    // 🔧 新規追加：安全なGoogle Script呼び出し
+    function safeCallGoogleScript(functionName, ...args) {
+      return new Promise((resolve, reject) => {
+        try {
+          const timeout = setTimeout(() => {
+            reject(new Error(`${functionName}: タイムアウト`));
+          }, 15000); // 15秒タイムアウト
+          
+          google.script.run
+            .withSuccessHandler(function(result) {
+              clearTimeout(timeout);
+              resolve(result);
+            })
+            .withFailureHandler(function(error) {
+              clearTimeout(timeout);
+              reject(error);
+            })
+            [functionName](...args);
+        } catch (error) {
+          reject(error);
+        }
+      });
+    }
+
+    // 🔧 新規追加：スケルトンローディング表示
+    function showSkeletonStats() {
+      const container = document.getElementById('stats-container');
+      container.innerHTML = `
+        <div class="quick-stat border-primary">
+          <div class="skeleton skeleton-number"></div>
+          <p class="mb-0 fw-semibold">今日の予約</p>
+        </div>
+        <div class="quick-stat border-warning">
+          <div class="skeleton skeleton-number"></div>
+          <p class="mb-0 fw-semibold">未引渡</p>
+        </div>
+        <div class="quick-stat border-success">
+          <div class="skeleton skeleton-number"></div>
+          <p class="mb-0 fw-semibold">今月の売上</p>
+        </div>
+        <div class="quick-stat border-info">
+          <div class="skeleton skeleton-number"></div>
+          <p class="mb-0 fw-semibold">今日の売上</p>
+        </div>
+        <div class="quick-stat border-danger">
+          <div class="skeleton skeleton-number"></div>
+          <p class="mb-0 fw-semibold">在庫アラート</p>
+        </div>
+        <div class="quick-stat border-secondary">
+          <div class="skeleton skeleton-number"></div>
+          <p class="mb-0 fw-semibold">商品数</p>
+        </div>
+      `;
+    }
+
+    // 概要表示（アニメーション追加）
+    function renderOverview() {
+      const stats = currentData.stats;
+      const inventory = currentData.inventory;
+      const orders = currentData.orders;
+
+      console.log('📊 統計データ表示:', stats);
+
+      // 統計表示（アニメーション付き）
+      const container = document.getElementById('stats-container');
+      container.innerHTML = `
+        <div class="quick-stat border-primary fade-in">
+          <i class="bi bi-calendar-check text-primary" style="font-size: 2rem;"></i>
+          <p class="stat-number text-primary">${stats.todayOrdersCount || 0}</p>
+          <p class="mb-0 fw-semibold">今日の予約</p>
+        </div>
+        <div class="quick-stat border-warning fade-in">
+          <i class="bi bi-clock text-warning" style="font-size: 2rem;"></i>
+          <p class="stat-number text-warning">${stats.pendingOrdersCount || 0}</p>
+          <p class="mb-0 fw-semibold">未引渡</p>
+        </div>
+        <div class="quick-stat border-success fade-in">
+          <i class="bi bi-currency-yen text-success" style="font-size: 2rem;"></i>
+          <p class="stat-number text-success">¥${(stats.monthRevenue || 0).toLocaleString()}</p>
+          <p class="mb-0 fw-semibold">今月の売上</p>
+        </div>
+        <div class="quick-stat border-info fade-in">
+          <i class="bi bi-cash text-info" style="font-size: 2rem;"></i>
+          <p class="stat-number text-info">¥${(stats.todayRevenue || 0).toLocaleString()}</p>
+          <p class="mb-0 fw-semibold">今日の売上</p>
+        </div>
+        <div class="quick-stat border-danger fade-in">
+          <i class="bi bi-exclamation-triangle text-danger" style="font-size: 2rem;"></i>
+          <p class="stat-number text-danger">${(stats.outOfStockCount || 0) + (stats.lowStockCount || 0)}</p>
+          <p class="mb-0 fw-semibold">在庫アラート</p>
+        </div>
+        <div class="quick-stat border-secondary fade-in">
+          <i class="bi bi-graph-up text-secondary" style="font-size: 2rem;"></i>
+          <p class="stat-number text-secondary">${stats.totalProducts || 0}</p>
+          <p class="mb-0 fw-semibold">商品数</p>
+        </div>
+      `;
+
+      // 在庫アラート
+      renderStockAlerts(inventory);
+      
+      // 今後1週間の予約状況
+      renderWeekReservations();
+      
+      // 最近の予約（受取日時昇順で最初の10件）
+      renderRecentOrders(orders.slice(0, 10));
+    }
+
+    // 🔧 修正版：デバッグ機能（エラーハンドリング強化）
     function debugData() {
       showDebugPanel();
       updateStatus('デバッグ情報取得中', 'loading');
       
-      try {
-        google.script.run
-          .withSuccessHandler(function(debugInfo) {
-            const content = document.getElementById('debug-content');
-            if (debugInfo && !debugInfo.error) {
-              let html = `<strong>📊 スプレッドシート情報:</strong><br>`;
-              html += `スプレッドシートID: ${debugInfo.spreadsheetId}<br>`;
-              html += `シート名: ${debugInfo.sheetName}<br>`;
-              html += `総行数: ${debugInfo.totalRows}<br>`;
-              html += `総列数: ${debugInfo.totalColumns}<br><br>`;
-              
-              html += `<strong>📝 ヘッダー行:</strong><br>`;
-              debugInfo.headers.forEach((header, index) => {
+      safeCallGoogleScript('debugOrderData')
+        .then(debugInfo => {
+          const content = document.getElementById('debug-content');
+          if (debugInfo && !debugInfo.error) {
+            let html = `<strong>📊 システム情報 v5.3.0:</strong><br>`;
+            html += `スプレッドシートID: ${debugInfo.spreadsheetId}<br>`;
+            html += `シート名: ${debugInfo.sheetName}<br>`;
+            html += `総行数: ${debugInfo.totalRows}<br>`;
+            html += `総列数: ${debugInfo.totalColumns}<br>`;
+            html += `システム初期化: ${systemInitialized ? '完了' : '未完了'}<br>`;
+            html += `接続状態: ${isOnline ? 'オンライン' : 'オフライン'}<br>`;
+            html += `再試行回数: ${retryCount}/${maxRetries}<br><br>`;
+            
+            html += `<strong>📝 ヘッダー行:</strong><br>`;
+            debugInfo.headers.forEach((header, index) => {
+              const columnLetter = getColumnLetter(index);
+              html += `${columnLetter}列(${index}): ${header}<br>`;
+            });
+            
+            html += `<br><strong>📄 サンプルデータ行:</strong><br>`;
+            debugInfo.sampleData.forEach((value, index) => {
+              if (value !== '' && value !== null && value !== undefined) {
                 const columnLetter = getColumnLetter(index);
-                html += `${columnLetter}列(${index}): ${header}<br>`;
-              });
-              
-              html += `<br><strong>📄 サンプルデータ行:</strong><br>`;
-              debugInfo.sampleData.forEach((value, index) => {
-                if (value !== '' && value !== null && value !== undefined) {
-                  const columnLetter = getColumnLetter(index);
-                  html += `${columnLetter}列(${index}): ${value}<br>`;
-                }
-              });
-              
-              if (debugInfo.importantColumns) {
-                html += `<br><strong>🔍 重要列データ:</strong><br>`;
-                Object.entries(debugInfo.importantColumns).forEach(([key, value]) => {
-                  html += `${key}: ${value}<br>`;
-                });
+                html += `${columnLetter}列(${index}): ${value}<br>`;
               }
-              
-              content.innerHTML = html;
-            } else {
-              content.innerHTML = `エラー: ${debugInfo?.error || 'デバッグ情報の取得に失敗しました'}`;
+            });
+            
+            if (debugInfo.importantColumns) {
+              html += `<br><strong>🔍 重要列データ:</strong><br>`;
+              Object.entries(debugInfo.importantColumns).forEach(([key, value]) => {
+                html += `${key}: ${value}<br>`;
+              });
             }
-            updateStatus('デバッグ情報表示完了', 'success');
-          })
-          .withFailureHandler(function(error) {
-            document.getElementById('debug-content').innerHTML = 'エラー: ' + error;
-            updateStatus('デバッグエラー', 'error');
-          })
-          .debugOrderData();
-      } catch (error) {
-        console.error('デバッグ関数呼び出しエラー:', error);
-        document.getElementById('debug-content').innerHTML = 'デバッグ関数呼び出しエラー: ' + error;
-        updateStatus('デバッグエラー', 'error');
-      }
+            
+            if (debugInfo.systemConfig) {
+              html += `<br><strong>⚙️ システム設定:</strong><br>`;
+              html += `バージョン: ${debugInfo.systemConfig.version}<br>`;
+              html += `キャッシュ有効: ${debugInfo.systemConfig.cache?.enabled || false}<br>`;
+              html += `受取時間設定: ${debugInfo.systemConfig.pickupTimes?.start || 11}:00-${debugInfo.systemConfig.pickupTimes?.end || 17}:00<br>`;
+            }
+            
+            content.innerHTML = html;
+          } else {
+            content.innerHTML = `エラー: ${debugInfo?.error || 'デバッグ情報の取得に失敗しました'}`;
+          }
+          updateStatus('デバッグ情報表示完了', 'success');
+        })
+        .catch(error => {
+          document.getElementById('debug-content').innerHTML = 'エラー: ' + error;
+          updateStatus('デバッグエラー', 'error');
+        });
     }
 
+    // 🔧 新規追加：列文字取得関数
     function getColumnLetter(index) {
       if (index < 26) {
         return String.fromCharCode(65 + index);
@@ -870,70 +1369,95 @@
       document.getElementById('debug-panel').style.display = 'none';
     }
 
-    // タブデータ読み込み
-    function loadTabData(tabId) {
-      switch(tabId) {
-        case 'overview': loadOverviewData(); break;
-        case 'orders': loadOrdersData(); break;
-        case 'inventory': loadInventoryData(); break;
-        case 'menu': loadMenuData(); break;
+    // 🔧 新規追加：キャッシュクリア機能
+    function clearSystemCache() {
+      if (!systemInitialized) {
+        showToast('システムが初期化されていません', 'error');
+        return;
       }
-    }
-
-    // 概要データ読み込み
-    function loadOverviewData() {
-      showLoading('overview');
-      updateStatus('統計データ読み込み中', 'loading');
       
-      Promise.all([
-        callGoogleScript('getDashboardStats'),
-        callGoogleScript('getInventoryDataForForm'),
-        callGoogleScript('getOrderList')
-      ]).then(([stats, inventory, orders]) => {
-        console.log('📊 取得データ:', { 
-          stats: stats, 
-          inventoryCount: inventory?.length || 0, 
-          ordersCount: orders?.length || 0 
+      updateStatus('キャッシュクリア中', 'loading');
+      
+      safeCallGoogleScript('clearCache')
+        .then(result => {
+          if (result && result.success) {
+            showToast(result.message, 'success');
+            updateStatus('キャッシュクリア完了', 'success');
+            // データを再読み込み
+            setTimeout(() => {
+              refreshAllData();
+            }, 1000);
+          } else {
+            showToast('キャッシュクリアに失敗しました', 'error');
+            updateStatus('キャッシュクリアエラー', 'error');
+          }
+        })
+        .catch(error => {
+          console.error('キャッシュクリアエラー:', error);
+          showToast('キャッシュクリアでエラーが発生しました', 'error');
+          updateStatus('キャッシュクリアエラー', 'error');
         });
-        
-        currentData = { stats: stats || {}, inventory: inventory || [], orders: orders || [] };
-        renderOverview();
-        hideLoading('overview');
-        updateStatus('更新完了', 'success');
-      }).catch(error => {
-        console.error('概要データ取得エラー:', error);
-        showError('overview', '統計データの取得に失敗しました: ' + error);
-        updateStatus('取得エラー', 'error');
-      });
     }
 
-    // 概要表示
-    function renderOverview() {
-      const stats = currentData.stats;
-      const inventory = currentData.inventory;
-      const orders = currentData.orders;
-
-      console.log('📊 統計データ表示:', stats);
-
-      // 統計表示
-      document.getElementById('today-orders').textContent = stats.todayOrdersCount || 0;
-      document.getElementById('pending-orders').textContent = stats.pendingOrdersCount || 0;
-      document.getElementById('month-revenue').textContent = '¥' + (stats.monthRevenue || 0).toLocaleString();
-      document.getElementById('today-revenue').textContent = '¥' + (stats.todayRevenue || 0).toLocaleString();
-      document.getElementById('alert-count').textContent = (stats.outOfStockCount || 0) + (stats.lowStockCount || 0);
-      document.getElementById('total-products').textContent = stats.totalProducts || 0;
-
-      // 在庫アラート
-      renderStockAlerts(inventory);
+    // 予約データ読み込み（エラーハンドリング強化）
+    function loadOrdersData() {
+      showLoading('orders');
+      updateStatus('予約データ読み込み中', 'loading');
       
-      // 今後1週間の予約状況
-      renderWeekReservations();
-      
-      // 最近の予約
-      renderRecentOrders(orders.slice(0, 10));
+      safeCallGoogleScript('getOrderList')
+        .then(orders => {
+          console.log('📋 予約データ取得:', orders);
+          currentData.orders = orders || [];
+          renderOrders();
+          hideLoading('orders');
+          updateStatus('更新完了', 'success');
+        })
+        .catch(error => {
+          console.error('予約データ取得エラー:', error);
+          showError('orders', '予約データの取得に失敗しました: ' + error);
+          updateStatus('取得エラー', 'error');
+        });
     }
 
-    // 今後1週間の予約状況を集計・表示
+    // 在庫データ読み込み（エラーハンドリング強化）
+    function loadInventoryData() {
+      showLoading('inventory');
+      updateStatus('在庫データ読み込み中', 'loading');
+      
+      safeCallGoogleScript('getInventoryDataForForm')
+        .then(inventory => {
+          currentData.inventory = inventory || [];
+          renderInventory();
+          hideLoading('inventory');
+          updateStatus('更新完了', 'success');
+        })
+        .catch(error => {
+          console.error('在庫データ取得エラー:', error);
+          showError('inventory', '在庫データの取得に失敗しました');
+          updateStatus('取得エラー', 'error');
+        });
+    }
+
+    // メニューデータ読み込み（エラーハンドリング強化）
+    function loadMenuData() {
+      showLoading('menu');
+      updateStatus('メニューデータ読み込み中', 'loading');
+      
+      safeCallGoogleScript('getProductMaster')
+        .then(products => {
+          currentData.products = products || [];
+          renderMenu();
+          hideLoading('menu');
+          updateStatus('更新完了', 'success');
+        })
+        .catch(error => {
+          console.error('メニューデータ取得エラー:', error);
+          showError('menu', 'メニューデータの取得に失敗しました');
+          updateStatus('取得エラー', 'error');
+        });
+    }
+
+    // 今後1週間の予約状況を集計・表示（既存のまま）
     function getNext7DaysReservations(orders) {
       const today = new Date();
       today.setHours(0,0,0,0);
@@ -950,1005 +1474,3 @@
           isToday: i === 0
         });
       }
-      return result;
-    }
-
-    function renderWeekReservations() {
-      const weekData = getNext7DaysReservations(currentData.orders || []);
-      let html = '<div class="week-calendar">';
-      
-      weekData.forEach(d => {
-        const date = new Date(d.date);
-        const jpDate = date.toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit', weekday: 'short' });
-        const dayClass = `week-day ${d.count > 0 ? 'has-orders' : ''} ${d.isToday ? 'today' : ''}`;
-        
-        html += `
-          <div class="${dayClass}" onclick="showWeekDetail('${d.date}')">
-            <div style="font-size: 0.8rem;">${jpDate}</div>
-            <div style="font-weight: bold; margin-top: 5px;">
-              ${d.count > 0 ? `${d.count}件` : '-'}
-            </div>
-          </div>
-        `;
-      });
-      
-      html += '</div>';
-      document.getElementById('week-reservations').innerHTML = html;
-    }
-
-    // 週間予約詳細モーダル表示
-    function showWeekDetail(dateStr) {
-      const orders = (currentData.orders || []).filter(order => order.pickupDate === dateStr);
-      const modalTitle = document.getElementById('weekDetailModalTitle');
-      const content = document.getElementById('week-detail-content');
-      const jpDate = new Date(dateStr).toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit', weekday: 'short' });
-      modalTitle.textContent = `${jpDate} の予約詳細（${orders.length}件）`;
-      
-      if (orders.length === 0) {
-        content.innerHTML = '<div class="text-center text-muted">予約はありません</div>';
-      } else {
-        let html = '<div class="table-responsive"><table class="table table-bordered table-sm"><thead><tr><th>顧客名</th><th>受取時間</th><th>商品</th><th>金額</th><th>状態</th><th>予約ID</th></tr></thead><tbody>';
-        orders.forEach(order => {
-          const customerName = `${order.lastName || ''} ${order.firstName || ''}`;
-          const items = (order.items || []).map(item => `${item.name}×${item.quantity}`).join('<br>');
-          const statusBadge = order.isDelivered
-            ? '<span class="badge bg-success">引渡済</span>'
-            : '<span class="badge bg-warning">未引渡</span>';
-          html += `<tr><td>${customerName}</td><td>${order.pickupTime || ''}</td><td>${items}</td><td>¥${(order.totalPrice || 0).toLocaleString()}</td><td>${statusBadge}</td><td><code>${order.orderId || ''}</code></td></tr>`;
-        });
-        html += '</tbody></table></div>';
-        content.innerHTML = html;
-      }
-      new bootstrap.Modal(document.getElementById('weekDetailModal')).show();
-    }
-
-    // 在庫アラート表示
-    function renderStockAlerts(inventory) {
-      const container = document.getElementById('stock-alerts');
-      
-      if (!inventory || inventory.length === 0) {
-        container.innerHTML = '<div class="text-center text-muted">在庫データがありません</div>';
-        return;
-      }
-
-      const outOfStock = inventory.filter(p => p.remaining <= 0);
-      const lowStock = inventory.filter(p => p.remaining > 0 && p.remaining <= (p.minStock || 3));
-
-      let html = '';
-
-      if (outOfStock.length > 0) {
-        html += `<div class="alert alert-danger">
-          <strong>在庫切れ (${outOfStock.length}商品)</strong>
-          <ul class="mb-0 mt-2">`;
-        outOfStock.slice(0, 5).forEach(p => {
-          html += `<li>${p.name}</li>`;
-        });
-        if (outOfStock.length > 5) {
-          html += `<li>他${outOfStock.length - 5}商品...</li>`;
-        }
-        html += '</ul></div>';
-      }
-
-      if (lowStock.length > 0) {
-        html += `<div class="alert alert-warning">
-          <strong>在庫少 (${lowStock.length}商品)</strong>
-          <ul class="mb-0 mt-2">`;
-        lowStock.slice(0, 5).forEach(p => {
-          html += `<li>${p.name} (残り${p.remaining}個)</li>`;
-        });
-        if (lowStock.length > 5) {
-          html += `<li>他${lowStock.length - 5}商品...</li>`;
-        }
-        html += '</ul></div>';
-      }
-
-      if (html === '') {
-        html = '<div class="text-center text-success">すべての商品で十分な在庫があります</div>';
-      }
-
-      container.innerHTML = html;
-    }
-
-    // 最近の予約表示
-    function renderRecentOrders(orders) {
-      const container = document.getElementById('recent-orders');
-      
-      if (!orders || orders.length === 0) {
-        container.innerHTML = '<div class="text-center text-muted">予約はありません</div>';
-        return;
-      }
-
-      let html = '<div class="row">';
-      orders.forEach(order => {
-        const customerName = `${order.lastName || ''} ${order.firstName || ''}`.trim();
-        const statusBadge = order.isDelivered
-          ? '<span class="badge bg-success">引渡済</span>'
-          : '<span class="badge bg-warning">未引渡</span>';
-        
-        const itemsText = (order.items || []).map(item => `${item.name}×${item.quantity}`).join(', ');
-        
-        html += `
-          <div class="col-md-6 mb-3">
-            <div class="card h-100 fade-in" style="cursor: pointer;" onclick="showOrderDetail('${order.orderId}')">
-              <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                  <h6 class="card-title mb-0 customer-name">${customerName}</h6>
-                  ${statusBadge}
-                </div>
-                <p class="card-text text-muted small mb-2">
-                  <span class="pickup-date">${order.pickupDate || ''}</span> 
-                  <span class="pickup-time">${order.pickupTime || ''}</span>
-                </p>
-                <p class="card-text">
-                  <strong>¥${(order.totalPrice || 0).toLocaleString()}</strong><br>
-                  <small class="text-muted">${itemsText}</small><br>
-                  <small class="order-id">${order.orderId || ''}</small>
-                </p>
-              </div>
-            </div>
-          </div>
-        `;
-      });
-      html += '</div>';
-      
-      container.innerHTML = html;
-    }
-
-    // 予約データ読み込み
-    function loadOrdersData() {
-      showLoading('orders');
-      updateStatus('予約データ読み込み中', 'loading');
-      
-      callGoogleScript('getOrderList')
-        .then(orders => {
-          console.log('📋 予約データ取得:', orders);
-          currentData.orders = orders || [];
-          renderOrders();
-          hideLoading('orders');
-          updateStatus('更新完了', 'success');
-        })
-        .catch(error => {
-          console.error('予約データ取得エラー:', error);
-          showError('orders', '予約データの取得に失敗しました: ' + error);
-          updateStatus('取得エラー', 'error');
-        });
-    }
-
-    // 予約一覧表示
-    function renderOrders(page = 1) {
-      const tbody = document.getElementById('orders-table-body');
-      let orders = [...(currentData.orders || [])];
-
-      // フィルター適用
-      const statusFilter = document.getElementById('order-status-filter')?.value;
-      const dateFilter = document.getElementById('order-date-filter')?.value;
-      const searchFilter = document.getElementById('order-search')?.value?.toLowerCase();
-
-      if (statusFilter) {
-        orders = orders.filter(order => {
-          if (statusFilter === 'delivered') return order.isDelivered;
-          if (statusFilter === 'pending') return !order.isDelivered;
-          return true;
-        });
-      }
-
-      if (dateFilter) {
-        orders = orders.filter(order => {
-          return order.pickupDate === dateFilter;
-        });
-      }
-
-      if (searchFilter) {
-        orders = orders.filter(order => {
-          const customerName = `${order.lastName} ${order.firstName}`.toLowerCase();
-          const email = (order.email || '').toLowerCase();
-          return customerName.includes(searchFilter) || email.includes(searchFilter);
-        });
-      }
-
-      // ページネーション
-      const totalPages = Math.ceil(orders.length / ordersPerPage);
-      const startIndex = (page - 1) * ordersPerPage;
-      const endIndex = startIndex + ordersPerPage;
-      const pageOrders = orders.slice(startIndex, endIndex);
-
-      if (pageOrders.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">該当する予約がありません</td></tr>';
-        renderOrdersPagination(0, 1);
-        return;
-      }
-
-      let html = '';
-      pageOrders.forEach(order => {
-        const customerName = `${order.lastName || ''} ${order.firstName || ''}`.trim();
-        
-        // 商品サマリー
-        let itemsSummary = '';
-        const items = order.items || [];
-        if (items.length === 0) {
-          itemsSummary = '<span class="text-muted">商品なし</span>';
-        } else if (items.length <= 2) {
-          itemsSummary = items.map(item => `${item.name} ×${item.quantity}`).join('<br>');
-        } else {
-          itemsSummary = items.slice(0, 2).map(item => `${item.name} ×${item.quantity}`).join('<br>');
-          itemsSummary += `<br><small class="text-muted">他${items.length - 2}商品</small>`;
-        }
-
-        const statusBadge = order.isDelivered
-          ? '<span class="badge bg-success">引渡済</span>'
-          : '<span class="badge bg-warning">未引渡</span>';
-
-        html += `
-          <tr class="fade-in">
-            <td>
-              <div class="pickup-date">${order.pickupDate || ''}</div>
-              <div class="pickup-time">${order.pickupTime || ''}</div>
-            </td>
-            <td>
-              <div class="customer-name">${customerName}</div>
-              <div class="customer-email">${order.email || ''}</div>
-            </td>
-            <td class="order-items">${itemsSummary}</td>
-            <td><strong>¥${(order.totalPrice || 0).toLocaleString()}</strong></td>
-            <td>${statusBadge}</td>
-            <td><span class="order-id">${order.orderId || ''}</span></td>
-            <td>
-              <div class="action-buttons">
-                <button class="btn btn-outline-primary btn-sm" onclick="showOrderDetail('${order.orderId}')">
-                  <i class="bi bi-eye"></i> 詳細
-                </button>
-                <button class="btn btn-${order.isDelivered ? 'outline-secondary' : 'success'} btn-sm" 
-                        onclick="toggleDelivery(${order.rowIndex}, ${!order.isDelivered})">
-                  <i class="bi bi-${order.isDelivered ? 'arrow-left' : 'check'}"></i> 
-                  ${order.isDelivered ? '戻す' : '完了'}
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
-      });
-
-      tbody.innerHTML = html;
-      renderOrdersPagination(totalPages, page);
-    }
-
-    // ページネーション表示
-    function renderOrdersPagination(totalPages, currentPage) {
-      const pagination = document.getElementById('orders-pagination');
-      
-      let html = '';
-      
-      if (totalPages > 1) {
-        // 前のページ
-        html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-          <a class="page-link" href="#" onclick="renderOrders(${currentPage - 1})">&laquo;</a>
-        </li>`;
-        
-        // ページ番号
-        for (let i = 1; i <= totalPages; i++) {
-          if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
-            html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
-              <a class="page-link" href="#" onclick="renderOrders(${i})">${i}</a>
-            </li>`;
-          } else if (i === currentPage - 3 || i === currentPage + 3) {
-            html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
-          }
-        }
-        
-        // 次のページ
-        html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-          <a class="page-link" href="#" onclick="renderOrders(${currentPage + 1})">&raquo;</a>
-        </li>`;
-      }
-      
-      pagination.innerHTML = html;
-    }
-
-    // 予約詳細表示
-    function showOrderDetail(orderId) {
-      updateStatus('予約詳細取得中', 'loading');
-      
-      callGoogleScript('getOrderDetails', orderId)
-        .then(result => {
-          if (result.success) {
-            renderOrderDetail(result.order);
-            new bootstrap.Modal(document.getElementById('orderDetailModal')).show();
-            updateStatus('詳細表示完了', 'success');
-          } else {
-            showToast(result.message, 'error');
-            updateStatus('取得エラー', 'error');
-          }
-        })
-        .catch(error => {
-          console.error('予約詳細取得エラー:', error);
-          showToast('予約詳細の取得に失敗しました', 'error');
-          updateStatus('取得エラー', 'error');
-        });
-    }
-
-    // 予約詳細表示（モーダル内）
-    function renderOrderDetail(order) {
-      const content = document.getElementById('order-detail-content');
-      
-      const itemsHtml = order.items.map(item => `
-        <tr>
-          <td>${item.name}</td>
-          <td class="text-center">${item.quantity}</td>
-          <td class="text-end">¥${item.price.toLocaleString()}</td>
-          <td class="text-end">¥${item.subtotal.toLocaleString()}</td>
-        </tr>
-      `).join('');
-
-      content.innerHTML = `
-        <div class="row">
-          <div class="col-md-6">
-            <h6>顧客情報</h6>
-            <table class="table table-sm">
-              <tr><th width="30%">お名前</th><td>${order.lastName} ${order.firstName}</td></tr>
-              <tr><th>メール</th><td>${order.email}</td></tr>
-              <tr><th>受取日時</th><td>${order.pickupDate} ${order.pickupTime}</td></tr>
-              <tr><th>予約日時</th><td>${new Date(order.timestamp).toLocaleString('ja-JP')}</td></tr>
-              <tr><th>予約ID</th><td><code>${order.orderId}</code></td></tr>
-              <tr><th>状態</th><td>
-                ${order.isDelivered 
-                  ? '<span class="badge bg-success">引渡済</span>' 
-                  : '<span class="badge bg-warning">未引渡</span>'}
-              </td></tr>
-            </table>
-            ${order.note ? `
-              <h6>備考</h6>
-              <div class="alert alert-info">${order.note}</div>
-            ` : ''}
-          </div>
-          <div class="col-md-6">
-            <h6>注文内容</h6>
-            <table class="table table-sm">
-              <thead>
-                <tr>
-                  <th>商品名</th>
-                  <th class="text-center">数量</th>
-                  <th class="text-end">単価</th>
-                  <th class="text-end">小計</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${itemsHtml}
-              </tbody>
-              <tfoot>
-                <tr class="table-warning">
-                  <th colspan="3">合計</th>
-                  <th class="text-end">¥${order.totalPrice.toLocaleString()}</th>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
-      `;
-
-      // モーダルのボタン設定
-      const editBtn = document.getElementById('edit-order-btn');
-      const cancelBtn = document.getElementById('cancel-order-btn');
-      
-      editBtn.onclick = () => editOrder(order.orderId);
-      cancelBtn.onclick = () => confirmCancelOrder(order.orderId);
-      
-      // 引渡済みの場合はボタンを無効化
-      if (order.isDelivered) {
-        editBtn.disabled = true;
-        cancelBtn.disabled = true;
-      } else {
-        editBtn.disabled = false;
-        cancelBtn.disabled = false;
-      }
-    }
-
-    // 在庫データ読み込み
-    function loadInventoryData() {
-      showLoading('inventory');
-      updateStatus('在庫データ読み込み中', 'loading');
-      
-      callGoogleScript('getInventoryDataForForm')
-        .then(inventory => {
-          currentData.inventory = inventory || [];
-          renderInventory();
-          hideLoading('inventory');
-          updateStatus('更新完了', 'success');
-        })
-        .catch(error => {
-          console.error('在庫データ取得エラー:', error);
-          showError('inventory', '在庫データの取得に失敗しました');
-          updateStatus('取得エラー', 'error');
-        });
-    }
-
-    // 在庫一覧表示
-    function renderInventory() {
-      const tbody = document.getElementById('inventory-table-body');
-      const inventory = currentData.inventory;
-
-      if (!inventory || inventory.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">在庫データがありません</td></tr>';
-        return;
-      }
-
-      let html = '';
-      inventory.forEach(item => {
-        let statusBadge = '<span class="badge bg-success">充分</span>';
-        let rowClass = '';
-        
-        if (item.remaining <= 0) {
-          statusBadge = '<span class="badge bg-danger">在庫切れ</span>';
-          rowClass = 'table-danger';
-        } else if (item.remaining <= (item.minStock || 3)) {
-          statusBadge = '<span class="badge bg-warning text-dark">在庫少</span>';
-          rowClass = 'table-warning';
-        }
-
-        html += `
-          <tr class="${rowClass}">
-            <td><strong>${item.name || ''}</strong></td>
-            <td>¥${(item.price || 0).toLocaleString()}</td>
-            <td><span class="fw-bold">${item.stock || 0}</span></td>
-            <td><span class="text-warning">${item.reserved || 0}</span></td>
-            <td><span class="fw-bold">${item.remaining || 0}</span></td>
-            <td>${item.minStock || 3}</td>
-            <td>${statusBadge}</td>
-            <td>
-              <div class="action-buttons">
-                <button class="btn btn-primary btn-sm"
-                        onclick="showStockModal('${item.id}', '${item.name}', ${item.stock || 0}, ${item.minStock || 3})">
-                  <i class="bi bi-pencil"></i> 更新
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
-      });
-
-      tbody.innerHTML = html;
-    }
-
-    // メニューデータ読み込み
-    function loadMenuData() {
-      showLoading('menu');
-      updateStatus('メニューデータ読み込み中', 'loading');
-      
-      callGoogleScript('getProductMaster')
-        .then(products => {
-          currentData.products = products || [];
-          renderMenu();
-          hideLoading('menu');
-          updateStatus('更新完了', 'success');
-        })
-        .catch(error => {
-          console.error('メニューデータ取得エラー:', error);
-          showError('menu', 'メニューデータの取得に失敗しました');
-          updateStatus('取得エラー', 'error');
-        });
-    }
-
-    // メニュー一覧表示
-    function renderMenu() {
-      const tbody = document.getElementById('menu-table-body');
-      const products = currentData.products;
-
-      if (!products || products.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">メニューデータがありません</td></tr>';
-        return;
-      }
-
-      let html = '';
-      products.forEach(product => {
-        const statusBadge = product.enabled
-          ? '<span class="badge bg-success">有効</span>'
-          : '<span class="badge bg-secondary">無効</span>';
-
-        html += `
-          <tr class="${!product.enabled ? 'table-secondary' : ''}">
-            <td>${product.order || 0}</td>
-            <td><code>${product.id}</code></td>
-            <td><strong>${product.name}</strong></td>
-            <td>¥${(product.price || 0).toLocaleString()}</td>
-            <td>${statusBadge}</td>
-            <td><small>${new Date().toLocaleDateString('ja-JP')}</small></td>
-            <td>
-              <div class="action-buttons">
-                <button class="btn btn-outline-primary btn-sm" 
-                        onclick="editProduct('${product.id}')">
-                  <i class="bi bi-pencil"></i> 編集
-                </button>
-                <button class="btn btn-outline-danger btn-sm" 
-                        onclick="confirmDeleteProduct('${product.id}', '${product.name}')">
-                  <i class="bi bi-trash"></i> 削除
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
-      });
-
-      tbody.innerHTML = html;
-    }
-
-    // 引渡状態切り替え
-    function toggleDelivery(rowIndex, isDelivered) {
-      const button = event.target.closest('button');
-      const originalHTML = button.innerHTML;
-      button.disabled = true;
-      button.innerHTML = '処理中...';
-      updateStatus('状態更新中', 'loading');
-
-      callGoogleScript('updateDeliveryStatus', rowIndex, isDelivered)
-        .then(result => {
-          if (result.success) {
-            showToast(result.message, 'success');
-            loadOrdersData();
-            loadOverviewData();
-            updateStatus('更新完了', 'success');
-          } else {
-            showToast(result.message, 'error');
-            updateStatus('更新エラー', 'error');
-          }
-        })
-        .catch(error => {
-          showToast('引渡状態の更新に失敗しました: ' + error, 'error');
-          updateStatus('更新エラー', 'error');
-        })
-        .finally(() => {
-          button.disabled = false;
-          button.innerHTML = originalHTML;
-        });
-    }
-
-    // フィルター適用
-    function applyOrderFilters() {
-      renderOrders(1);
-    }
-
-    // 在庫更新モーダル表示
-    function showStockModal(productId, productName, currentStock, minStock) {
-      document.getElementById('stock-product-id').value = productId;
-      document.getElementById('stock-product-name').value = productName;
-      document.getElementById('stock-current').value = currentStock;
-      document.getElementById('stock-new').value = currentStock;
-      document.getElementById('stock-min').value = minStock || 3;
-      
-      new bootstrap.Modal(document.getElementById('stockModal')).show();
-    }
-
-    // 在庫更新
-    function updateStock() {
-      const productId = document.getElementById('stock-product-id').value;
-      const newStock = parseInt(document.getElementById('stock-new').value);
-
-      if (isNaN(newStock) || newStock < 0) {
-        showToast('有効な在庫数を入力してください', 'error');
-        return;
-      }
-
-      const button = event.target;
-      const originalText = button.innerHTML;
-      button.disabled = true;
-      button.innerHTML = '更新中...';
-      updateStatus('在庫更新中', 'loading');
-
-      callGoogleScript('updateInventoryStock', productId, newStock, '管理者')
-        .then(result => {
-          if (result.success) {
-            showToast(result.message, 'success');
-            bootstrap.Modal.getInstance(document.getElementById('stockModal')).hide();
-            loadInventoryData();
-            loadOverviewData();
-            updateStatus('更新完了', 'success');
-          } else {
-            showToast(result.message, 'error');
-            updateStatus('更新エラー', 'error');
-          }
-        })
-        .catch(error => {
-          showToast('在庫の更新に失敗しました: ' + error, 'error');
-          updateStatus('更新エラー', 'error');
-        })
-        .finally(() => {
-          button.disabled = false;
-          button.innerHTML = originalText;
-        });
-    }
-
-    // 一括在庫更新モーダル表示
-    function showBulkUpdateModal() {
-      const content = document.getElementById('bulk-update-content');
-      const inventory = currentData.inventory;
-
-      let html = '<div class="row">';
-      inventory.forEach((item, index) => {
-        html += `
-          <div class="col-md-6 mb-3">
-            <div class="card">
-              <div class="card-body">
-                <h6 class="card-title">${item.name}</h6>
-                <div class="row">
-                  <div class="col-6">
-                    <label class="form-label">現在在庫</label>
-                    <input type="number" class="form-control" value="${item.stock}" readonly>
-                  </div>
-                  <div class="col-6">
-                    <label class="form-label">新在庫</label>
-                    <input type="number" class="form-control bulk-stock" 
-                           data-product-id="${item.id}" min="0" placeholder="変更時のみ入力">
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-        if ((index + 1) % 2 === 0) html += '</div><div class="row">';
-      });
-      html += '</div>';
-
-      content.innerHTML = html;
-      new bootstrap.Modal(document.getElementById('bulkUpdateModal')).show();
-    }
-
-    // 一括在庫更新実行
-    function executeBulkUpdate() {
-      const inputs = document.querySelectorAll('.bulk-stock');
-      const updates = [];
-
-      inputs.forEach(input => {
-        const newStock = parseInt(input.value);
-        if (!isNaN(newStock) && newStock >= 0) {
-          updates.push({
-            productId: input.dataset.productId,
-            newStock: newStock
-          });
-        }
-      });
-
-      if (updates.length === 0) {
-        showToast('更新する商品がありません', 'warning');
-        return;
-      }
-
-      updateStatus('一括更新中', 'loading');
-
-      callGoogleScript('bulkUpdateInventory', updates)
-        .then(result => {
-          if (result.success) {
-            showToast(result.message, 'success');
-            bootstrap.Modal.getInstance(document.getElementById('bulkUpdateModal')).hide();
-            loadInventoryData();
-            loadOverviewData();
-            updateStatus('一括更新完了', 'success');
-          } else {
-            showToast(result.message, 'error');
-            updateStatus('更新エラー', 'error');
-          }
-        })
-        .catch(error => {
-          showToast('一括更新に失敗しました: ' + error, 'error');
-          updateStatus('更新エラー', 'error');
-        });
-    }
-
-    // 在庫リセット
-    function resetAllInventory() {
-      if (confirm('全商品の在庫を10個にリセットしますか？')) {
-        const updates = currentData.inventory.map(item => ({
-          productId: item.id,
-          newStock: 10
-        }));
-
-        callGoogleScript('bulkUpdateInventory', updates)
-          .then(result => {
-            if (result.success) {
-              showToast('在庫をリセットしました', 'success');
-              loadInventoryData();
-              loadOverviewData();
-            } else {
-              showToast(result.message, 'error');
-            }
-          })
-          .catch(error => {
-            showToast('在庫リセットに失敗しました: ' + error, 'error');
-          });
-      }
-    }
-
-    // 全データ更新
-    function refreshAllData() {
-      updateStatus('全データ更新中', 'loading');
-      
-      const activeTab = document.querySelector('.nav-pills .nav-link.active');
-      if (activeTab) {
-        const targetId = activeTab.getAttribute('data-bs-target').substring(1);
-        loadTabData(targetId);
-      }
-      
-      setTimeout(() => {
-        showToast('データを更新しました', 'success');
-      }, 1000);
-    }
-
-    // 自動更新
-    function startAutoUpdate() {
-      clearInterval(updateInterval);
-      updateInterval = setInterval(() => {
-        if (!document.hidden) {
-          const activeTab = document.querySelector('.nav-pills .nav-link.active');
-          if (activeTab) {
-            const targetId = activeTab.getAttribute('data-bs-target').substring(1);
-            // 概要タブのみ自動更新
-            if (targetId === 'overview') {
-              loadTabData(targetId);
-            }
-          }
-        }
-      }, 120000); // 2分ごと
-    }
-
-    // エクスポート機能（プレースホルダー）
-    function exportOrders() {
-      updateStatus('データエクスポート中', 'loading');
-      showToast('エクスポート機能は開発中です', 'info');
-      updateStatus('エクスポート完了', 'success');
-    }
-
-    function exportInventory() {
-      updateStatus('在庫エクスポート中', 'loading');
-      showToast('エクスポート機能は開発中です', 'info');
-      updateStatus('エクスポート完了', 'success');
-    }
-
-    function exportData() {
-      updateStatus('全データエクスポート中', 'loading');
-      showToast('エクスポート機能は開発中です', 'info');
-      updateStatus('エクスポート完了', 'success');
-    }
-
-    // 商品管理機能（プレースホルダー）
-    function editProduct(productId) {
-      showToast('商品編集機能は開発中です', 'info');
-    }
-
-    function confirmDeleteProduct(productId, productName) {
-      showToast('商品削除機能は開発中です', 'info');
-    }
-
-    function editOrder(orderId) {
-      showToast('予約編集機能は開発中です', 'info');
-    }
-
-    function confirmCancelOrder(orderId) {
-      if (confirm('この予約をキャンセルしますか？')) {
-        showToast('予約キャンセル機能は開発中です', 'info');
-      }
-    }
-
-    // ユーティリティ関数
-    function showLoading(section) {
-      const loading = document.getElementById(section + '-loading');
-      const content = document.getElementById(section + '-content');
-      if (loading) loading.classList.add('show');
-      if (content) content.style.display = 'none';
-    }
-
-    function hideLoading(section) {
-      const loading = document.getElementById(section + '-loading');
-      const content = document.getElementById(section + '-content');
-      if (loading) loading.classList.remove('show');
-      if (content) content.style.display = 'block';
-    }
-
-    function showError(section, message) {
-      const content = document.getElementById(section + '-content');
-      if (content) {
-        content.innerHTML = `<div class="alert alert-danger"><h5>エラー</h5><p>${message}</p></div>`;
-        content.style.display = 'block';
-      }
-      hideLoading(section);
-    }
-
-    // Google Script呼び出し
-    function callGoogleScript(functionName, ...args) {
-      return new Promise((resolve, reject) => {
-        try {
-          if (typeof google === 'undefined' || !google.script || !google.script.run) {
-            reject(new Error('Google Apps Script API が利用できません'));
-            return;
-          }
-          
-          google.script.run
-            .withSuccessHandler(resolve)
-            .withFailureHandler(reject)
-            [functionName](...args);
-        } catch (error) {
-          reject(error);
-        }
-      });
-    }
-
-    function updateStatus(message, type) {
-      const status = document.getElementById('status');
-      if (!status) return;
-      
-      let icon = 'bi-wifi';
-      let color = 'rgba(40, 167, 69, 0.9)';
-      
-      switch (type) {
-        case 'loading':
-          icon = 'bi-arrow-clockwise';
-          color = 'rgba(255, 193, 7, 0.9)';
-          break;
-        case 'error':
-          icon = 'bi-exclamation-triangle';
-          color = 'rgba(220, 53, 69, 0.9)';
-          break;
-        case 'success':
-          icon = 'bi-check-circle';
-          color = 'rgba(40, 167, 69, 0.9)';
-          break;
-      }
-      
-      status.innerHTML = `<i class="${icon}"></i> ${message}`;
-      status.style.backgroundColor = color;
-    }
-
-    function showToast(message, type = 'success') {
-      // 既存のトーストを削除
-      document.querySelectorAll('.toast').forEach(toast => {
-        const bsToast = bootstrap.Toast.getInstance(toast);
-        if (bsToast) bsToast.hide();
-      });
-
-      let bgClass = 'bg-success';
-      let iconClass = 'bi-check-circle';
-      
-      switch (type) {
-        case 'error':
-          bgClass = 'bg-danger';
-          iconClass = 'bi-x-circle';
-          break;
-        case 'warning':
-          bgClass = 'bg-warning';
-          iconClass = 'bi-exclamation-triangle';
-          break;
-        case 'info':
-          bgClass = 'bg-info';
-          iconClass = 'bi-info-circle';
-          break;
-      }
-
-      const toastHtml = `
-        <div class="toast align-items-center text-white ${bgClass} border-0"
-             style="position: fixed; top: 100px; right: 20px; z-index: 1100; min-width: 350px;">
-          <div class="d-flex">
-            <div class="toast-body">
-              <i class="${iconClass} me-2"></i>${message}
-            </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-          </div>
-        </div>
-      `;
-
-      document.body.insertAdjacentHTML('beforeend', toastHtml);
-      
-      const toastElement = document.body.lastElementChild;
-      const toast = new bootstrap.Toast(toastElement, {
-        autohide: true,
-        delay: type === 'error' ? 8000 : 5000
-      });
-      
-      toast.show();
-
-      toastElement.addEventListener('hidden.bs.toast', function() {
-        this.remove();
-      });
-    }
-
-    // キーボードショートカット
-    document.addEventListener('keydown', function(e) {
-      try {
-        // Ctrl+R または F5 でデータ更新
-        if ((e.ctrlKey && e.key === 'r') || e.key === 'F5') {
-          e.preventDefault();
-          refreshAllData();
-        }
-        
-        // Ctrl+D でデバッグパネル表示
-        if (e.ctrlKey && e.key === 'd') {
-          e.preventDefault();
-          debugData();
-        }
-        
-        // Escape でモーダルを閉じる
-        if (e.key === 'Escape') {
-          const openModals = document.querySelectorAll('.modal.show');
-          openModals.forEach(modal => {
-            const bsModal = bootstrap.Modal.getInstance(modal);
-            if (bsModal) bsModal.hide();
-          });
-          
-          // デバッグパネルも閉じる
-          hideDebugPanel();
-        }
-      } catch (error) {
-        console.warn('キーボードショートカット処理エラー:', error);
-      }
-    });
-
-    // ページ離脱時の処理
-    window.addEventListener('beforeunload', function() {
-      try {
-        clearInterval(updateInterval);
-      } catch (error) {
-        console.warn('cleanup処理エラー:', error);
-      }
-    });
-
-    // ページ可視性変更時の処理
-    document.addEventListener('visibilitychange', function() {
-      try {
-        if (!document.hidden) {
-          // ページが再び表示された時は概要データを更新
-          if (document.querySelector('#overview-tab.active')) {
-            loadOverviewData();
-          }
-        }
-      } catch (error) {
-        console.warn('可視性変更処理エラー:', error);
-      }
-    });
-
-    // エラーハンドリング
-    window.addEventListener('error', function(e) {
-      console.error('グローバルエラー:', e.error);
-      updateStatus('システムエラー', 'error');
-      showToast('予期しないエラーが発生しました', 'error');
-    });
-
-    // 未処理のPromise拒否のハンドリング
-    window.addEventListener('unhandledrejection', function(e) {
-      console.error('未処理のPromise拒否:', e.reason);
-      updateStatus('通信エラー', 'error');
-      showToast('サーバーとの通信でエラーが発生しました', 'error');
-    });
-
-    // パフォーマンス監視
-    function measurePerformance(label, fn) {
-      const start = performance.now();
-      const result = fn();
-      const end = performance.now();
-      console.log(`⏱️ ${label}: ${(end - start).toFixed(2)}ms`);
-      return result;
-    }
-
-    // デバッグ用：データ保存
-    function saveDebugData() {
-      try {
-        const debugData = {
-          timestamp: new Date().toISOString(),
-          currentData: currentData,
-          version: '5.2.3',
-          environment: 'GAS'
-        };
-        console.log('💾 デバッグデータ:', debugData);
-        showToast('デバッグデータをコンソールに出力しました', 'info');
-      } catch (error) {
-        console.error('デバッグデータ保存エラー:', error);
-      }
-    }
-
-    // 開発者用：コンソールからアクセス可能な関数
-    window.hyggelyDebug = {
-      getCurrentData: () => currentData,
-      refreshData: refreshAllData,
-      showDebug: debugData,
-      saveDebug: saveDebugData,
-      testToast: (message, type) => showToast(message, type),
-      version: '5.2.3',
-      environment: 'GAS-iframe'
-    };
-
-    console.log('🔧 デバッグ機能: window.hyggelyDebug で利用可能');
-    console.log('🚀 Hyggelyダッシュボード v5.2.3 初期化完了（エラー解決版）');
