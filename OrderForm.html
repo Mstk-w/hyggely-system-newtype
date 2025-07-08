@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#8B4513">
-  <title>Hyggelyカンパーニュ専門店 ご予約フォーム v5.3.0</title>
+  <title>Hyggelyカンパーニュ専門店 ご予約フォーム v5.3.2</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <style>
@@ -110,7 +110,7 @@
       vertical-align: middle;
     }
     
-    /* 🔧 修正：受取時間選択の改善 */
+    /* 受取時間選択の改善 */
     .time-selection {
       margin-bottom: 1rem;
     }
@@ -146,7 +146,7 @@
       background: #f8f9fa;
     }
     
-    /* 🔧 新規追加：受取時間帯の説明 */
+    /* 受取時間帯の説明 */
     .time-info {
       background: #e3f2fd;
       border-left: 4px solid #2196f3;
@@ -372,31 +372,6 @@
       margin-top: 0.25rem;
     }
     
-    /* 商品検索 */
-    .product-search {
-      margin-bottom: 1rem;
-    }
-    .product-filter {
-      display: flex;
-      gap: 0.5rem;
-      margin-bottom: 1rem;
-      flex-wrap: wrap;
-    }
-    .filter-btn {
-      padding: 0.5rem 1rem;
-      border: 2px solid #e8dcc6;
-      background: white;
-      border-radius: 20px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      font-size: 0.8rem;
-    }
-    .filter-btn.active {
-      background: #8B4513;
-      color: white;
-      border-color: #8B4513;
-    }
-    
     /* フッター */
     .footer {
       color: #6b4423;
@@ -408,102 +383,24 @@
       border-radius: 15px;
     }
     
-    /* 商品カード */
-    .product-card {
-      position: relative;
-      border: 2px solid #e8dcc6;
-      border-radius: 10px;
+    /* 営業時間表示 */
+    .business-hours {
+      background: #e8f5e8;
+      border-left: 4px solid #28a745;
       padding: 1rem;
-      margin-bottom: 0.5rem;
-      transition: all 0.3s ease;
-      background: white;
-    }
-    .product-card:hover {
-      border-color: #8B4513;
-      box-shadow: 0 4px 15px rgba(139, 69, 19, 0.1);
-    }
-    .product-card.selected {
-      border-color: #8B4513;
-      background: rgba(139, 69, 19, 0.05);
-    }
-    
-    /* カテゴリータブ */
-    .category-tabs {
-      display: flex;
-      gap: 0.5rem;
+      border-radius: 0 8px 8px 0;
       margin-bottom: 1rem;
-      overflow-x: auto;
-      padding-bottom: 0.5rem;
     }
-    .category-tab {
-      padding: 0.5rem 1rem;
-      background: white;
-      border: 2px solid #e8dcc6;
-      border-radius: 20px;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: all 0.3s ease;
+    .business-hours h6 {
+      color: #155724;
+      margin-bottom: 0.5rem;
     }
-    .category-tab.active {
-      background: #8B4513;
-      color: white;
-      border-color: #8B4513;
+    .business-hours p {
+      color: #155724;
+      margin-bottom: 0;
+      font-size: 0.9rem;
     }
     
-    /* 在庫状況アイコン */
-    .stock-status-icon {
-      position: absolute;
-      top: 5px;
-      right: 5px;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      font-size: 0.7rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-    }
-    
-    /* スケルトンスクリーン */
-    .skeleton {
-      background: linear-gradient(90deg, #f0e6d6 25%, #f7f3ed 50%, #f0e6d6 75%);
-      background-size: 200% 100%;
-      animation: skeleton-loading 1.2s infinite linear;
-      border-radius: 6px;
-      height: 20px;
-      margin-bottom: 8px;
-    }
-    .skeleton-title { width: 60%; height: 20px; }
-    .skeleton-badge { width: 30%; height: 16px; }
-    @keyframes skeleton-loading {
-      0% { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
-    }
-    
-    /* 選択中商品サマリーの固定表示 */
-    #fixed-summary {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      width: 100vw;
-      background: #fff8f0;
-      box-shadow: 0 -2px 10px rgba(139,69,19,0.08);
-      z-index: 2000;
-      padding: 0.5rem 1rem;
-      display: none;
-    }
-    #fixed-summary .badge { font-size: 1rem; }
-    
-    /* ボタンアニメーション強化 */
-    .btn-primary, .btn-success, .btn-secondary {
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-    .btn-primary:active, .btn-success:active, .btn-secondary:active {
-      transform: scale(0.97);
-      box-shadow: 0 2px 8px rgba(139,69,19,0.15);
-    }
-
     /* 今日の特別表示 */
     .today-special {
       background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
@@ -521,24 +418,6 @@
       color: #6c5617;
       margin-bottom: 0;
     }
-
-    /* 🔧 新規追加：営業時間表示 */
-    .business-hours {
-      background: #e8f5e8;
-      border-left: 4px solid #28a745;
-      padding: 1rem;
-      border-radius: 0 8px 8px 0;
-      margin-bottom: 1rem;
-    }
-    .business-hours h6 {
-      color: #155724;
-      margin-bottom: 0.5rem;
-    }
-    .business-hours p {
-      color: #155724;
-      margin-bottom: 0;
-      font-size: 0.9rem;
-    }
   </style>
 </head>
 <body>
@@ -551,11 +430,11 @@
     <!-- ヘッダー -->
     <div class="header fade-in">
       <h1><i class="bi bi-shop me-2"></i>Hyggelyカンパーニュ専門店</h1>
-      <h2>ご予約フォーム v5.3.0</h2>
+      <h2>ご予約フォーム v5.3.2</h2>
       <p class="mt-3 mb-0"><i class="bi bi-clock me-2"></i>在庫は注文時に最新情報で確認されます</p>
     </div>
     
-    <!-- 🔧 修正：営業時間表示 -->
+    <!-- 営業時間表示 -->
     <div class="business-hours fade-in">
       <h6><i class="bi bi-clock me-2"></i>営業時間・受取時間</h6>
       <p>
@@ -648,7 +527,7 @@
                   <div class="invalid-feedback">受取日を選択してください</div>
                   <div class="valid-feedback">正しく選択されています</div>
                 </div>
-                <!-- 🔧 修正：受取時間選択の改善 -->
+                <!-- 受取時間選択の改善 -->
                 <div class="col-md-6 mb-3">
                   <label class="form-label"><i class="bi bi-clock me-1"></i>受取時間（11:00-17:00）<span class="text-danger">*</span></label>
                   <input type="hidden" id="pickupTime" name="pickupTime" required>
@@ -681,28 +560,6 @@
               <div id="stock-alert" class="alert alert-info" style="display: none;">
                 <i class="bi bi-info-circle me-2"></i>
                 <span id="stock-alert-message"></span>
-              </div>
-              
-              <!-- 商品検索・フィルター -->
-              <div class="product-search">
-                <div class="row mb-3">
-                  <div class="col-md-8">
-                    <input type="text" class="form-control" id="product-search-input" placeholder="商品名で検索...">
-                  </div>
-                  <div class="col-md-4">
-                    <button type="button" class="btn btn-outline-primary w-100" id="clear-search">
-                      <i class="bi bi-x-circle me-1"></i>クリア
-                    </button>
-                  </div>
-                </div>
-                
-                <!-- カテゴリータブ -->
-                <div class="category-tabs" id="category-tabs">
-                  <div class="category-tab active" data-category="all">すべて</div>
-                  <div class="category-tab" data-category="bread">パン類</div>
-                  <div class="category-tab" data-category="premium">プレミアム</div>
-                  <div class="category-tab" data-category="pizza">ピザ・その他</div>
-                </div>
               </div>
               
               <!-- 商品一覧 -->
@@ -912,15 +769,9 @@
     </div>
   </div>
   
-  <!-- 選択中商品サマリーの固定表示 -->
-  <div id="fixed-summary">
-    <span id="fixed-summary-items"></span>
-    <span class="float-end fw-bold">合計: <span id="fixed-summary-total">¥0</span></span>
-  </div>
-  
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // 🔧 グローバル変数（v5.3.0対応）
+    // グローバル変数（v5.3.2対応）
     let inventoryData = [];
     let totalPrice = 0;
     let isSubmitting = false;
@@ -928,9 +779,9 @@
     let selectedProducts = new Map();
     let stockCheckTimeout = null;
     let lastStockCheckTime = 0;
-    let selectedTimeSlot = null; // 🔧 新規追加：選択中の時間スロット
+    let selectedTimeSlot = null;
 
-    // 🔧 修正：受取時間生成（11:00-17:00、15分間隔）
+    // 受取時間生成（11:00-17:00、15分間隔）
     const pickupTimeSlots = generateTimeSlots();
 
     function generateTimeSlots() {
@@ -957,10 +808,10 @@
 
     // 初期化
     document.addEventListener('DOMContentLoaded', function() {
-      console.log('🍞 Hyggelyシステム起動 v5.3.0 - 受取時間改善版');
+      console.log('🍞 Hyggelyシステム起動 v5.3.2 - 修正版');
       
       generatePickupDates();
-      generateTimeOptions(); // 🔧 新規追加：時間選択肢生成
+      generateTimeOptions();
       loadInventoryData();
       setupEventListeners();
       updateStatus('接続完了', 'success');
@@ -981,7 +832,7 @@
       }, 100);
     }
 
-    // イベントリスナー設定（拡張版）
+    // イベントリスナー設定
     function setupEventListeners() {
       // ステップ遷移
       document.getElementById('next-to-products').addEventListener('click', showProductSelection);
@@ -999,22 +850,9 @@
       const form = document.getElementById('order-form');
       form.addEventListener('input', validateFormRealTime);
       form.addEventListener('change', validateFormRealTime);
-
-      // 商品検索
-      document.getElementById('product-search-input').addEventListener('input', filterProducts);
-      document.getElementById('clear-search').addEventListener('click', clearSearch);
-
-      // カテゴリータブ
-      document.querySelectorAll('.category-tab').forEach(tab => {
-        tab.addEventListener('click', function() {
-          document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
-          this.classList.add('active');
-          filterProductsByCategory(this.dataset.category);
-        });
-      });
     }
 
-    // 🔧 新規追加：時間選択肢生成
+    // 時間選択肢生成
     function generateTimeOptions() {
       const container = document.getElementById('time-options');
       
@@ -1032,7 +870,7 @@
       });
     }
 
-    // 🔧 新規追加：時間スロット選択
+    // 時間スロット選択
     function selectTimeSlot(timeValue) {
       // 既存の選択を解除
       document.querySelectorAll('.time-option').forEach(option => {
@@ -1082,7 +920,7 @@
       }
     }
 
-    // 在庫データ読み込み（既存のまま）
+    // 在庫データ読み込み
     function loadInventoryData() {
       updateStatus('商品情報読み込み中', 'loading');
       
@@ -1102,167 +940,6 @@
         .getInventoryDataForForm();
     }
 
-    // 在庫状況のみ更新（選択状態を保持）
-    function updateStockStatus() {
-      const now = Date.now();
-      
-      if (now - lastStockCheckTime < 30000) {
-        return;
-      }
-      
-      lastStockCheckTime = now;
-      
-      console.log('🔄 在庫状況バックグラウンドチェック開始');
-      
-      google.script.run
-        .withSuccessHandler(function(products) {
-          if (!products || products.length === 0) return;
-          
-          const currentSelections = saveCurrentSelections();
-          inventoryData = products;
-          updateStockDisplays();
-          restoreSelections(currentSelections);
-          checkStockWarnings(currentSelections);
-          
-          console.log('✅ 在庫状況更新完了（選択状態保持）');
-        })
-        .withFailureHandler(function(error) {
-          console.warn('⚠️ 在庫チェックエラー（継続可能）:', error);
-        })
-        .getInventoryDataForForm();
-    }
-
-    // 現在の選択状態を保存
-    function saveCurrentSelections() {
-      const selections = {};
-      
-      inventoryData.forEach((product, index) => {
-        const input = document.getElementById(`product_${index}`);
-        if (input) {
-          const quantity = parseInt(input.value) || 0;
-          if (quantity > 0) {
-            selections[product.id] = quantity;
-          }
-        }
-      });
-      
-      return selections;
-    }
-
-    // 在庫表示のみ更新
-    function updateStockDisplays() {
-      inventoryData.forEach((product, index) => {
-        const row = document.querySelector(`[data-product-id="${product.id}"]`);
-        if (!row) return;
-        
-        const stockBadgeContainer = row.querySelector('td:first-child');
-        let stockBadge = '';
-        
-        if (product.remaining <= 0) {
-          stockBadge = '<span class="badge stock-out">在庫なし</span>';
-        } else if (product.remaining <= 2) {
-          stockBadge = `<span class="badge stock-low">残り${product.remaining}個</span>`;
-        } else {
-          stockBadge = `<span class="badge stock-ok">残り${product.remaining}個</span>`;
-        }
-        
-        const productName = stockBadgeContainer.querySelector('strong').textContent;
-        stockBadgeContainer.innerHTML = `
-          <div class="d-flex justify-content-between align-items-start">
-            <div>
-              <strong>${productName}</strong><br>
-              ${stockBadge}
-            </div>
-          </div>
-        `;
-        
-        const quantityButtons = row.querySelectorAll('.quantity-btn');
-        const quantityInput = row.querySelector('.quantity-input');
-        
-        if (product.remaining <= 0) {
-          quantityButtons.forEach(btn => btn.disabled = true);
-          quantityInput.disabled = true;
-          quantityInput.max = 0;
-          row.style.opacity = '0.5';
-        } else {
-          quantityButtons.forEach(btn => btn.disabled = false);
-          quantityInput.disabled = false;
-          quantityInput.max = Math.min(product.remaining, 10);
-          row.style.opacity = '1';
-        }
-      });
-    }
-
-    // 選択状態を復元
-    function restoreSelections(selections) {
-      Object.keys(selections).forEach(productId => {
-        const productIndex = inventoryData.findIndex(p => p.id === productId);
-        if (productIndex !== -1) {
-          const input = document.getElementById(`product_${productIndex}`);
-          if (input) {
-            const requestedQuantity = selections[productId];
-            const availableQuantity = inventoryData[productIndex].remaining;
-            const actualQuantity = Math.min(requestedQuantity, availableQuantity);
-            
-            input.value = actualQuantity;
-            updateSubtotal(productIndex, actualQuantity);
-            
-            const row = document.querySelector(`[data-product-id="${productId}"]`);
-            if (row) {
-              if (actualQuantity > 0) {
-                row.classList.add('selected');
-              } else {
-                row.classList.remove('selected');
-              }
-            }
-          }
-        }
-      });
-      
-      updateTotalPrice();
-      updateSelectedProducts();
-      updateConfirmButton();
-    }
-
-    // 在庫不足の警告をチェック
-    function checkStockWarnings(originalSelections) {
-      const warnings = [];
-      
-      Object.keys(originalSelections).forEach(productId => {
-        const product = inventoryData.find(p => p.id === productId);
-        if (product) {
-          const requestedQuantity = originalSelections[productId];
-          const availableQuantity = product.remaining;
-          
-          if (availableQuantity === 0) {
-            warnings.push(`${product.name}は在庫切れになりました`);
-          } else if (requestedQuantity > availableQuantity) {
-            warnings.push(`${product.name}の在庫が${availableQuantity}個に減少しました`);
-          }
-        }
-      });
-      
-      showStockAlert(warnings);
-    }
-
-    // 在庫アラート表示
-    function showStockAlert(warnings) {
-      const alertDiv = document.getElementById('stock-alert');
-      const messageSpan = document.getElementById('stock-alert-message');
-      
-      if (warnings.length > 0) {
-        messageSpan.innerHTML = warnings.join('<br>');
-        alertDiv.className = 'alert alert-warning';
-        alertDiv.style.display = 'block';
-        
-        setTimeout(() => {
-          alertDiv.style.display = 'none';
-        }, 5000);
-      } else {
-        alertDiv.style.display = 'none';
-      }
-    }
-
     // ローディング完了
     function finishLoading() {
       const progressBar = document.getElementById('loading-progress');
@@ -1273,66 +950,59 @@
       }, 500);
     }
 
-    // 商品リスト表示（既存のまま）
+    // 商品リスト表示
     function renderProductList() {
       const tbody = document.getElementById('products-list');
-      tbody.innerHTML = `
-        <tr class="skeleton-row"><td colspan="4"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-badge"></div></td></tr>
-        <tr class="skeleton-row"><td colspan="4"><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-badge"></div></td></tr>
-      `;
+      tbody.innerHTML = '';
       
-      setTimeout(() => {
-        tbody.innerHTML = '';
-        inventoryData.forEach((product, index) => {
-          const row = document.createElement('tr');
-          let stockBadge = '';
-          let rowStyle = '';
-          if (product.remaining <= 0) {
-            stockBadge = '<span class="badge stock-out">在庫なし</span>';
-            rowStyle = 'opacity: 0.5;';
-          } else if (product.remaining <= 2) {
-            stockBadge = `<span class="badge stock-low">残り${product.remaining}個</span>`;
-          } else {
-            stockBadge = `<span class="badge stock-ok">残り${product.remaining}個</span>`;
-          }
-          row.style.cssText = rowStyle;
-          row.classList.add('product-row');
-          row.dataset.productId = product.id;
-          row.dataset.category = categorizeProduct(product.name);
-          
-          row.innerHTML = `
-            <td>
-              <div class="d-flex align-items-center">
-                <div>
-                  <strong>${product.name || ''}</strong><br>
-                  ${stockBadge}
-                </div>
+      inventoryData.forEach((product, index) => {
+        const row = document.createElement('tr');
+        let stockBadge = '';
+        let rowStyle = '';
+        if (product.remaining <= 0) {
+          stockBadge = '<span class="badge stock-out">在庫なし</span>';
+          rowStyle = 'opacity: 0.5;';
+        } else if (product.remaining <= 2) {
+          stockBadge = `<span class="badge stock-low">残り${product.remaining}個</span>`;
+        } else {
+          stockBadge = `<span class="badge stock-ok">残り${product.remaining}個</span>`;
+        }
+        row.style.cssText = rowStyle;
+        row.classList.add('product-row');
+        row.dataset.productId = product.id;
+        
+        row.innerHTML = `
+          <td>
+            <div class="d-flex align-items-center">
+              <div>
+                <strong>${product.name || ''}</strong><br>
+                ${stockBadge}
               </div>
-            </td>
-            <td><strong>¥${product.price.toLocaleString()}</strong></td>
-            <td>
-              <div class="quantity-selector">
-                <button type="button" class="quantity-btn" onclick="decreaseQuantity(${index})" ${product.remaining <= 0 ? 'disabled' : ''}>
-                  <i class="bi bi-dash"></i>
-                </button>
-                <input type="number" class="quantity-input" id="product_${index}" name="product_${index}" 
-                       value="0" min="0" max="${Math.min(product.remaining, 10)}" 
-                       ${product.remaining <= 0 ? 'disabled' : ''} 
-                       onchange="handleQuantityChange(${index}, this.value)">
-                <button type="button" class="quantity-btn" onclick="increaseQuantity(${index})" ${product.remaining <= 0 ? 'disabled' : ''}>
-                  <i class="bi bi-plus"></i>
-                </button>
-              </div>
-              <div class="stock-warning" id="warning_${index}"></div>
-            </td>
-            <td><span id="subtotal_${index}" class="fw-bold text-primary">¥0</span></td>
-          `;
-          tbody.appendChild(row);
-        });
-      }, 500);
+            </div>
+          </td>
+          <td><strong>¥${product.price.toLocaleString()}</strong></td>
+          <td>
+            <div class="quantity-selector">
+              <button type="button" class="quantity-btn" onclick="decreaseQuantity(${index})" ${product.remaining <= 0 ? 'disabled' : ''}>
+                <i class="bi bi-dash"></i>
+              </button>
+              <input type="number" class="quantity-input" id="product_${index}" name="product_${index}" 
+                     value="0" min="0" max="${Math.min(product.remaining, 10)}" 
+                     ${product.remaining <= 0 ? 'disabled' : ''} 
+                     onchange="handleQuantityChange(${index}, this.value)">
+              <button type="button" class="quantity-btn" onclick="increaseQuantity(${index})" ${product.remaining <= 0 ? 'disabled' : ''}>
+                <i class="bi bi-plus"></i>
+              </button>
+            </div>
+            <div class="stock-warning" id="warning_${index}"></div>
+          </td>
+          <td><span id="subtotal_${index}" class="fw-bold text-primary">¥0</span></td>
+        `;
+        tbody.appendChild(row);
+      });
     }
 
-    // 数量変更時のハンドリング（在庫チェック付き）
+    // 数量変更時のハンドリング
     function handleQuantityChange(index, value) {
       const qty = parseInt(value) || 0;
       const product = inventoryData[index];
@@ -1342,26 +1012,7 @@
         return;
       }
       
-      scheduleStockCheck();
       updateQuantity(index, qty);
-    }
-
-    // 在庫チェックのスケジューリング
-    function scheduleStockCheck() {
-      if (stockCheckTimeout) {
-        clearTimeout(stockCheckTimeout);
-      }
-      
-      stockCheckTimeout = setTimeout(() => {
-        updateStockStatus();
-      }, 2000);
-    }
-
-    // 商品カテゴリ分類
-    function categorizeProduct(name) {
-      if (name.includes('プレミアム')) return 'premium';
-      if (name.includes('ピザ') || name.includes('フォカッチャ') || name.includes('ピタパン')) return 'pizza';
-      return 'bread';
     }
 
     // 数量操作
@@ -1478,57 +1129,6 @@
       } else {
         summary.style.display = 'none';
       }
-      updateFixedSummary();
-    }
-
-    // 選択中商品サマリーの固定表示
-    function updateFixedSummary() {
-      const summary = document.getElementById('fixed-summary');
-      const itemsSpan = document.getElementById('fixed-summary-items');
-      const totalSpan = document.getElementById('fixed-summary-total');
-      if (selectedProducts.size > 0) {
-        let html = '';
-        selectedProducts.forEach(item => {
-          html += `<span class="badge bg-primary me-2 mb-1">${item.name} ×${item.quantity}</span>`;
-        });
-        itemsSpan.innerHTML = html;
-        totalSpan.textContent = `¥${totalPrice.toLocaleString()}`;
-        summary.style.display = 'block';
-      } else {
-        summary.style.display = 'none';
-      }
-    }
-
-    // 商品検索・フィルター
-    function filterProducts() {
-      const searchTerm = document.getElementById('product-search-input').value.toLowerCase();
-      const rows = document.querySelectorAll('.product-row');
-      
-      rows.forEach(row => {
-        const productName = row.querySelector('strong').textContent.toLowerCase();
-        if (productName.includes(searchTerm)) {
-          row.style.display = '';
-        } else {
-          row.style.display = 'none';
-        }
-      });
-    }
-
-    function clearSearch() {
-      document.getElementById('product-search-input').value = '';
-      filterProducts();
-    }
-
-    function filterProductsByCategory(category) {
-      const rows = document.querySelectorAll('.product-row');
-      
-      rows.forEach(row => {
-        if (category === 'all' || row.dataset.category === category) {
-          row.style.display = '';
-        } else {
-          row.style.display = 'none';
-        }
-      });
     }
 
     // ステップ管理
@@ -1567,7 +1167,7 @@
       updateStep(2);
     }
 
-    // 🔧 修正：バリデーション（時間選択対応）
+    // バリデーション（時間選択対応）
     function validateCustomerInfo() {
       const form = document.getElementById('order-form');
       const requiredFields = ['lastName', 'firstName', 'email', 'pickupDate'];
@@ -1588,7 +1188,7 @@
         }
       });
       
-      // 🔧 時間選択のバリデーション
+      // 時間選択のバリデーション
       const pickupTimeField = document.getElementById('pickupTime');
       if (!selectedTimeSlot || !pickupTimeField.value) {
         document.getElementById('time-feedback').style.display = 'block';
@@ -1667,7 +1267,7 @@
       }
     }
 
-    // 最終在庫チェック付き確認画面表示
+    // 確認画面表示
     function showConfirmation() {
       console.log('🔄 確認画面表示処理開始');
       
@@ -1718,8 +1318,7 @@
             updateStatus('在庫不足', 'error');
             
             inventoryData = latestInventory;
-            updateStockDisplays();
-            restoreSelections(currentSelections);
+            renderProductList();
             
             return;
           }
@@ -1733,6 +1332,23 @@
           updateStatus('在庫確認エラー', 'error');
         })
         .getInventoryDataForForm();
+    }
+
+    // 現在の選択状態を保存
+    function saveCurrentSelections() {
+      const selections = {};
+      
+      inventoryData.forEach((product, index) => {
+        const input = document.getElementById(`product_${index}`);
+        if (input) {
+          const quantity = parseInt(input.value) || 0;
+          if (quantity > 0) {
+            selections[product.id] = quantity;
+          }
+        }
+      });
+      
+      return selections;
     }
 
     // 確認画面表示（在庫チェック後）
@@ -1819,7 +1435,7 @@
         data[key] = value;
       }
       
-      // 🔧 修正：選択された時間を確実に設定
+      // 選択された時間を確実に設定
       if (selectedTimeSlot) {
         data.pickupTime = selectedTimeSlot;
       }
@@ -1887,7 +1503,7 @@
       selectedProducts.clear();
       totalPrice = 0;
       currentStep = 1;
-      selectedTimeSlot = null; // 🔧 時間選択もリセット
+      selectedTimeSlot = null;
       
       // 時間選択の表示をリセット
       document.querySelectorAll('.time-option').forEach(option => {
@@ -1963,27 +1579,7 @@
       return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
     }
 
-    // ページ離脱時の処理
-    window.addEventListener('beforeunload', function() {
-      if (stockCheckTimeout) {
-        clearTimeout(stockCheckTimeout);
-      }
-    });
-
-    // ページの印刷スタイル
-    window.addEventListener('beforeprint', function() {
-      document.querySelectorAll('.btn, .navbar, .status-indicator').forEach(el => {
-        el.style.display = 'none';
-      });
-    });
-
-    window.addEventListener('afterprint', function() {
-      document.querySelectorAll('.btn, .navbar, .status-indicator').forEach(el => {
-        el.style.display = '';
-      });
-    });
-
-    console.log('🚀 Hyggelyシステム v5.3.0 初期化完了 - 受取時間改善版');
+    console.log('🚀 Hyggelyシステム v5.3.2 初期化完了 - 修正版');
   </script>
 </body>
 </html>

@@ -1,13 +1,12 @@
 /**
- * Hyggelyカンパーニュ専門店 予約管理システム - 完全修正版
- * v5.3.0 - Dashboard表示修正・UI/UX向上・処理速度最適化版
+ * Hyggelyカンパーニュ専門店 予約管理システム - 修正版
+ * v5.3.2 - EmailSettings削除・Dashboard修正版
  * 
- * 主な改善点：
- * - Dashboard.html表示問題の根本修正
- * - 受取時間11:00-17:00の最適化
+ * 🔧 主な修正内容：
+ * - EmailSettings.html関連機能を削除
+ * - Dashboard.html用の未実装関数を追加
+ * - 基本的なメール送信機能は保持
  * - エラーハンドリング強化
- * - 処理速度向上
- * - UI/UX改善
  */
 
 // ===== システム設定 =====
@@ -17,12 +16,20 @@ const SYSTEM_CONFIG = {
     ORDER: '予約管理票',
     INVENTORY: '在庫管理票',
     PRODUCT_MASTER: '商品マスタ',
-    EMAIL_SETTINGS: 'メール設定',
     SYSTEM_LOG: 'システムログ'
   },
   adminPassword: 'hyggelyAdmin2024',
-  version: '5.3.0',
-  // 🔧 新規追加：キャッシュ設定
+  version: '5.3.2',
+  // メール設定（固定）
+  email: {
+    adminEmail: 'hyggely2021@gmail.com',
+    enabled: true,
+    customerSubject: 'Hyggelyカンパーニュ専門店 ご予約完了確認',
+    customerBody: '{lastName} {firstName} 様\n\nHyggely事前予約システムをご利用いただき誠にありがとうございます。\n以下の注文内容で承りましたのでお知らせします。\n\n予約ID: {orderId}\n\n{orderItems}\n\n・合計　　　¥{totalPrice}\n\n・受取日時：{pickupDateTime}\n\n受取日当日に現金またはPayPayでお支払いいただきます。\n当日は気をつけてお越しください。\n\n※このメールは自動送信されています。返信はできませんのでご了承ください。\nご不明な点がございましたら、Hyggely公式LINEまでお問い合わせください。',
+    adminSubject: '【新規予約】{lastName} {firstName}様 - {orderId}',
+    adminBody: '【新規予約通知】\n\n予約ID: {orderId}\n\nお客様情報:\n・氏名: {lastName} {firstName} 様\n・メール: {email}\n・受取日時: {pickupDateTime}\n\n注文内容:\n{orderItems}\n\n合計金額: ¥{totalPrice}\n\n※予約管理システムより自動送信されています。'
+  },
+  // キャッシュ設定
   cache: {
     enabled: true,
     duration: 300, // 5分
@@ -32,7 +39,7 @@ const SYSTEM_CONFIG = {
       products: 'products_cache'
     }
   },
-  // 🔧 新規追加：受取時間の最適化設定
+  // 受取時間の設定
   pickupTimes: {
     start: 11,    // 11時開始
     end: 17,      // 17時終了
@@ -40,7 +47,7 @@ const SYSTEM_CONFIG = {
   }
 };
 
-// ===== メインエントリーポイント（改良版） =====
+// ===== メインエントリーポイント =====
 function doGet(e) {
   try {
     console.log('🍞 Hyggelyシステム起動 v' + SYSTEM_CONFIG.version);
@@ -49,7 +56,7 @@ function doGet(e) {
     const action = params.action || '';
     const password = params.password || '';
     
-    // システム初期化（エラーハンドリング強化）
+    // システム初期化
     const initResult = checkAndInitializeSystem();
     if (!initResult.success) {
       console.error('❌ システム初期化失敗:', initResult.error);
@@ -59,8 +66,6 @@ function doGet(e) {
     switch (action) {
       case 'dashboard':
         return handleDashboard(password);
-      case 'email':
-        return handleEmailSettings(password);
       case 'health':
         return handleHealthCheck();
       default:
@@ -73,10 +78,10 @@ function doGet(e) {
   }
 }
 
-// 🔧 完全修正版：Dashboard表示処理
+// ===== Dashboard表示処理 =====
 function handleDashboard(password) {
   try {
-    // パスワード認証の改善
+    // パスワード認証
     if (!password || password !== SYSTEM_CONFIG.adminPassword) {
       console.log('⚠️ 認証失敗 - 無効なパスワード');
       return createAuthenticationPage();
@@ -84,7 +89,7 @@ function handleDashboard(password) {
     
     console.log('✅ Dashboard認証成功');
     
-    // ダッシュボードHTML生成（エラーハンドリング付き）
+    // ダッシュボードHTML生成
     let htmlOutput;
     try {
       htmlOutput = HtmlService.createHtmlOutputFromFile('Dashboard');
@@ -97,7 +102,7 @@ function handleDashboard(password) {
       .setTitle('Hyggelyカンパーニュ専門店 管理者ダッシュボード v' + SYSTEM_CONFIG.version)
       .addMetaTag('viewport', 'width=device-width, initial-scale=1')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-      .setSandboxMode(HtmlService.SandboxMode.IFRAME); // 🔧 重要：サンドボックスモード設定
+      .setSandboxMode(HtmlService.SandboxMode.IFRAME);
     
   } catch (error) {
     console.error('❌ Dashboard処理エラー:', error);
@@ -106,7 +111,787 @@ function handleDashboard(password) {
   }
 }
 
-// 🔧 新規追加：認証ページ生成
+// ===== 予約データ取得関数 =====
+function getOrderList() {
+  try {
+    console.log('📊 予約一覧取得開始（修正版 v5.3.2）');
+    
+    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
+    const orderSheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.ORDER);
+    
+    if (!orderSheet) {
+      console.error('❌ 予約管理票シートが見つかりません');
+      return [];
+    }
+    
+    const lastRow = orderSheet.getLastRow();
+    if (lastRow <= 1) {
+      console.log('⚠️ 予約データが存在しません（ヘッダーのみ）');
+      return [];
+    }
+    
+    const allData = orderSheet.getDataRange().getValues();
+    const headerRow = allData[0];
+    
+    console.log(`📋 データ処理開始: 全${allData.length}行（ヘッダー含む）`);
+    
+    const orders = [];
+    
+    for (let i = 1; i < allData.length; i++) {
+      const row = allData[i];
+      
+      // AJ列（index 35）の引渡状況をチェック
+      const deliveryStatus = row[35] || '未引渡';
+      
+      // 「未引渡」のデータのみ処理
+      if (deliveryStatus !== '未引渡') {
+        continue;
+      }
+      
+      // 基本データチェック
+      if (!row[0] || (!row[1] && !row[2])) {
+        continue;
+      }
+      
+      // 商品データ解析（G～AG列：index 6～32）
+      const selectedProducts = [];
+      for (let productIndex = 6; productIndex <= 32; productIndex++) {
+        const quantity = parseInt(row[productIndex]) || 0;
+        
+        if (quantity > 0) {
+          const productName = headerRow[productIndex] || `商品${productIndex - 5}`;
+          
+          selectedProducts.push({
+            name: productName,
+            quantity: quantity,
+            displayText: `・${productName} ${quantity}個`
+          });
+        }
+      }
+      
+      // 受取日時の正規化
+      let pickupDate = '';
+      if (row[4]) {
+        try {
+          if (row[4] instanceof Date) {
+            pickupDate = Utilities.formatDate(row[4], Session.getScriptTimeZone(), 'yyyy-MM-dd');
+          } else {
+            pickupDate = row[4].toString();
+          }
+        } catch (e) {
+          pickupDate = row[4].toString();
+        }
+      }
+      
+      const order = {
+        rowIndex: i + 1,
+        timestamp: row[0] || new Date(),
+        lastName: row[1] || '',
+        firstName: row[2] || '',
+        email: row[3] || '',
+        pickupDate: pickupDate,
+        pickupTime: row[5] || '',
+        selectedProducts: selectedProducts,
+        productsDisplay: selectedProducts.map(p => p.displayText).join('\n'),
+        note: row[33] || '',
+        totalPrice: parseFloat(row[34]) || 0,
+        deliveryStatus: deliveryStatus,
+        orderId: row[36] || generateOrderId(),
+        isDelivered: false,
+        updatedAt: new Date()
+      };
+      
+      orders.push(order);
+    }
+    
+    // ソート：受取日時昇順
+    orders.sort((a, b) => {
+      const dateTimeA = new Date(`${a.pickupDate} ${a.pickupTime || '00:00'}`);
+      const dateTimeB = new Date(`${b.pickupDate} ${b.pickupTime || '00:00'}`);
+      
+      const timeDiff = dateTimeA.getTime() - dateTimeB.getTime();
+      if (timeDiff !== 0) return timeDiff;
+      
+      const timestampA = new Date(a.timestamp);
+      const timestampB = new Date(b.timestamp);
+      return timestampA.getTime() - timestampB.getTime();
+    });
+    
+    console.log(`📊 予約一覧取得完了: ${orders.length}件（未引渡のみ）`);
+    
+    return orders;
+    
+  } catch (error) {
+    console.error('❌ 予約一覧取得エラー:', error);
+    logSystemEvent('ERROR', '予約一覧取得エラー', error.toString());
+    return [];
+  }
+}
+
+// ===== 全予約データ取得関数 =====
+function getAllOrders() {
+  try {
+    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
+    const orderSheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.ORDER);
+    
+    if (!orderSheet || orderSheet.getLastRow() <= 1) {
+      return [];
+    }
+    
+    const allData = orderSheet.getDataRange().getValues();
+    const headerRow = allData[0];
+    const orders = [];
+    
+    for (let i = 1; i < allData.length; i++) {
+      const row = allData[i];
+      
+      if (!row[0] || (!row[1] && !row[2])) {
+        continue;
+      }
+      
+      const selectedProducts = [];
+      for (let productIndex = 6; productIndex <= 32; productIndex++) {
+        const quantity = parseInt(row[productIndex]) || 0;
+        if (quantity > 0) {
+          const productName = headerRow[productIndex] || `商品${productIndex - 5}`;
+          selectedProducts.push({
+            name: productName,
+            quantity: quantity,
+            displayText: `・${productName} ${quantity}個`
+          });
+        }
+      }
+      
+      let pickupDate = '';
+      if (row[4]) {
+        try {
+          if (row[4] instanceof Date) {
+            pickupDate = Utilities.formatDate(row[4], Session.getScriptTimeZone(), 'yyyy-MM-dd');
+          } else {
+            pickupDate = row[4].toString();
+          }
+        } catch (e) {
+          pickupDate = row[4].toString();
+        }
+      }
+      
+      const order = {
+        rowIndex: i + 1,
+        timestamp: row[0] || new Date(),
+        lastName: row[1] || '',
+        firstName: row[2] || '',
+        email: row[3] || '',
+        pickupDate: pickupDate,
+        pickupTime: row[5] || '',
+        selectedProducts: selectedProducts,
+        productsDisplay: selectedProducts.map(p => p.displayText).join('\n'),
+        note: row[33] || '',
+        totalPrice: parseFloat(row[34]) || 0,
+        deliveryStatus: row[35] || '未引渡',
+        orderId: row[36] || generateOrderId(),
+        isDelivered: row[35] === '引渡済',
+        updatedAt: new Date()
+      };
+      
+      orders.push(order);
+    }
+    
+    return orders;
+    
+  } catch (error) {
+    console.error('❌ 全予約データ取得エラー:', error);
+    return [];
+  }
+}
+
+// ===== 予約フィルター関数 =====
+function getFilteredOrders(filterType = 'pending') {
+  try {
+    const allOrders = getAllOrders();
+    
+    switch (filterType) {
+      case 'pending':
+        return allOrders.filter(order => order.deliveryStatus === '未引渡');
+      case 'delivered':
+        return allOrders.filter(order => order.deliveryStatus === '引渡済');
+      case 'all':
+      default:
+        return allOrders;
+    }
+  } catch (error) {
+    console.error('❌ 予約フィルター取得エラー:', error);
+    return [];
+  }
+}
+
+// ===== 引渡状況変更関数 =====
+function updateDeliveryStatus(orderId, newStatus, updatedBy = 'ADMIN') {
+  try {
+    console.log(`🔄 引渡状況変更開始: ${orderId} -> ${newStatus}`);
+    
+    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
+    const orderSheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.ORDER);
+    
+    const allData = orderSheet.getDataRange().getValues();
+    let targetRowIndex = -1;
+    let orderData = null;
+    
+    for (let i = 1; i < allData.length; i++) {
+      if (allData[i][36] === orderId) {
+        targetRowIndex = i + 1;
+        orderData = allData[i];
+        break;
+      }
+    }
+    
+    if (targetRowIndex === -1) {
+      throw new Error(`予約ID ${orderId} が見つかりません`);
+    }
+    
+    const deliveryStatusCol = 36;
+    orderSheet.getRange(targetRowIndex, deliveryStatusCol).setValue(newStatus);
+    
+    let revenueUpdate = null;
+    if (newStatus === '引渡済') {
+      const totalPrice = parseFloat(orderData[34]) || 0;
+      revenueUpdate = {
+        amount: totalPrice,
+        date: new Date(),
+        orderId: orderId,
+        customer: `${orderData[1]} ${orderData[2]}`
+      };
+    }
+    
+    clearCache();
+    updateInventoryFromOrders();
+    
+    const customerName = `${orderData[1]} ${orderData[2]}`;
+    logSystemEvent('INFO', '引渡状況変更', 
+      `予約ID: ${orderId}, 顧客: ${customerName}, 新状況: ${newStatus}, 更新者: ${updatedBy}`);
+    
+    console.log(`✅ 引渡状況変更完了: ${orderId} -> ${newStatus}`);
+    
+    return {
+      success: true,
+      message: `引渡状況を「${newStatus}」に変更しました`,
+      orderId: orderId,
+      newStatus: newStatus,
+      customerName: customerName,
+      revenueUpdate: revenueUpdate
+    };
+    
+  } catch (error) {
+    console.error('❌ 引渡状況変更エラー:', error);
+    logSystemEvent('ERROR', '引渡状況変更エラー', `予約ID: ${orderId}, エラー: ${error.toString()}`);
+    
+    return {
+      success: false,
+      message: `引渡状況の変更に失敗しました: ${error.message}`,
+      orderId: orderId
+    };
+  }
+}
+
+// ===== 一括引渡状況変更関数 =====
+function bulkUpdateDeliveryStatus(orderIds, newStatus, updatedBy = 'ADMIN') {
+  try {
+    console.log(`🔄 一括引渡状況変更開始: ${orderIds.length}件 -> ${newStatus}`);
+    
+    const results = [];
+    let successCount = 0;
+    let errorCount = 0;
+    let totalRevenue = 0;
+    
+    orderIds.forEach(orderId => {
+      const result = updateDeliveryStatus(orderId, newStatus, updatedBy);
+      results.push(result);
+      
+      if (result.success) {
+        successCount++;
+        if (result.revenueUpdate) {
+          totalRevenue += result.revenueUpdate.amount;
+        }
+      } else {
+        errorCount++;
+      }
+    });
+    
+    logSystemEvent('INFO', '一括引渡状況変更', 
+      `対象: ${orderIds.length}件, 成功: ${successCount}件, 失敗: ${errorCount}件, 新状況: ${newStatus}`);
+    
+    console.log(`✅ 一括引渡状況変更完了: 成功${successCount}件, 失敗${errorCount}件`);
+    
+    return {
+      success: errorCount === 0,
+      message: `一括変更完了: 成功${successCount}件, 失敗${errorCount}件`,
+      successCount: successCount,
+      errorCount: errorCount,
+      totalRevenue: totalRevenue,
+      results: results
+    };
+    
+  } catch (error) {
+    console.error('❌ 一括引渡状況変更エラー:', error);
+    logSystemEvent('ERROR', '一括引渡状況変更エラー', error.toString());
+    
+    return {
+      success: false,
+      message: `一括変更に失敗しました: ${error.message}`,
+      successCount: 0,
+      errorCount: orderIds.length
+    };
+  }
+}
+
+// ===== 統計データ取得 =====
+function getDashboardStats() {
+  try {
+    console.log('📊 統計データ取得開始（修正版）');
+    
+    if (SYSTEM_CONFIG.cache.enabled) {
+      const cache = CacheService.getScriptCache();
+      const cachedStats = cache.get('dashboard_stats');
+      
+      if (cachedStats) {
+        console.log('📋 キャッシュからデータ取得');
+        return JSON.parse(cachedStats);
+      }
+    }
+    
+    const allOrders = getAllOrders();
+    const pendingOrders = allOrders.filter(order => order.deliveryStatus === '未引渡');
+    const deliveredOrders = allOrders.filter(order => order.deliveryStatus === '引渡済');
+    
+    const inventory = getInventoryDataForForm();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const todayPendingOrders = pendingOrders.filter(order => {
+      if (!order.pickupDate) return false;
+      try {
+        const pickupDate = new Date(order.pickupDate);
+        pickupDate.setHours(0, 0, 0, 0);
+        return pickupDate.getTime() === today.getTime();
+      } catch (e) {
+        return false;
+      }
+    });
+    
+    const outOfStock = inventory.filter(p => p.remaining <= 0);
+    const lowStock = inventory.filter(p => p.remaining > 0 && p.remaining <= (p.minStock || 3));
+    
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    
+    const monthDeliveredOrders = deliveredOrders.filter(order => {
+      if (!order.timestamp) return false;
+      try {
+        const orderDate = new Date(order.timestamp);
+        return orderDate.getMonth() === currentMonth && 
+               orderDate.getFullYear() === currentYear;
+      } catch (e) {
+        return false;
+      }
+    });
+    
+    const monthRevenue = monthDeliveredOrders.reduce((sum, order) => sum + (order.totalPrice || 0), 0);
+    
+    const todayDeliveredOrders = deliveredOrders.filter(order => {
+      if (!order.timestamp) return false;
+      try {
+        const orderDate = new Date(order.timestamp);
+        orderDate.setHours(0, 0, 0, 0);
+        return orderDate.getTime() === today.getTime();
+      } catch (e) {
+        return false;
+      }
+    });
+    
+    const todayRevenue = todayDeliveredOrders.reduce((sum, order) => sum + (order.totalPrice || 0), 0);
+    
+    const stats = {
+      todayOrdersCount: todayPendingOrders.length,
+      pendingOrdersCount: pendingOrders.length,
+      deliveredOrdersCount: deliveredOrders.length,
+      outOfStockCount: outOfStock.length,
+      lowStockCount: lowStock.length,
+      totalProducts: inventory.length,
+      todayRevenue: todayRevenue,
+      monthRevenue: monthRevenue,
+      systemVersion: SYSTEM_CONFIG.version,
+      lastUpdate: new Date().toISOString(),
+      systemHealth: {
+        totalOrdersCount: allOrders.length,
+        pendingOrdersCount: pendingOrders.length,
+        deliveredOrdersCount: deliveredOrders.length,
+        inventoryItems: inventory.length,
+        cacheEnabled: SYSTEM_CONFIG.cache.enabled
+      }
+    };
+    
+    if (SYSTEM_CONFIG.cache.enabled) {
+      const cache = CacheService.getScriptCache();
+      cache.put('dashboard_stats', JSON.stringify(stats), SYSTEM_CONFIG.cache.duration);
+    }
+    
+    console.log('📊 統計データ取得完了（修正版）');
+    return stats;
+    
+  } catch (error) {
+    console.error('❌ 統計データ取得エラー:', error);
+    logSystemEvent('ERROR', '統計データ取得エラー', error.toString());
+    return {
+      todayOrdersCount: 0,
+      pendingOrdersCount: 0,
+      deliveredOrdersCount: 0,
+      outOfStockCount: 0,
+      lowStockCount: 0,
+      totalProducts: 0,
+      todayRevenue: 0,
+      monthRevenue: 0,
+      systemVersion: SYSTEM_CONFIG.version,
+      lastUpdate: new Date().toISOString(),
+      error: error.toString()
+    };
+  }
+}
+
+// ===== 🔧 Dashboard用の未実装関数を追加 =====
+
+// 在庫更新モーダル用
+function showBulkUpdateModal() {
+  // Dashboard.htmlから呼び出される関数（JavaScript側で実装）
+  console.log('一括更新モーダル表示');
+  return { success: true, message: '一括更新モーダルを表示します' };
+}
+
+// 在庫リセット
+function resetAllInventory() {
+  try {
+    const products = getProductMaster().filter(p => p.enabled);
+    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
+    const inventorySheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.INVENTORY);
+    
+    // 在庫シートをクリアして再初期化
+    inventorySheet.clear();
+    initInventory(inventorySheet);
+    
+    clearCache();
+    logSystemEvent('INFO', '在庫リセット', '全商品の在庫を初期値にリセットしました');
+    
+    return { success: true, message: '在庫をリセットしました' };
+  } catch (error) {
+    console.error('❌ 在庫リセットエラー:', error);
+    return { success: false, message: '在庫リセットに失敗しました: ' + error.message };
+  }
+}
+
+// 在庫エクスポート
+function exportInventory() {
+  try {
+    const inventory = getInventoryDataForForm();
+    const csvData = [
+      ['商品ID', '商品名', '単価', '在庫数', '予約数', '残数', '最低在庫数', '更新日']
+    ];
+    
+    inventory.forEach(item => {
+      csvData.push([
+        item.id,
+        item.name,
+        item.price,
+        item.stock,
+        item.reserved,
+        item.remaining,
+        item.minStock,
+        new Date().toISOString()
+      ]);
+    });
+    
+    return { success: true, data: csvData, message: '在庫データをエクスポートしました' };
+  } catch (error) {
+    console.error('❌ 在庫エクスポートエラー:', error);
+    return { success: false, message: '在庫エクスポートに失敗しました: ' + error.message };
+  }
+}
+
+// 新商品追加
+function addNewProduct(productData) {
+  try {
+    const { name, price, order, stock } = productData;
+    
+    if (!name || !price) {
+      throw new Error('商品名と価格は必須です');
+    }
+    
+    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
+    const masterSheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.PRODUCT_MASTER);
+    const inventorySheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.INVENTORY);
+    
+    // 新しい商品IDを生成
+    const existingProducts = getProductMaster();
+    const newId = `PRD${String(existingProducts.length + 1).padStart(3, '0')}`;
+    
+    // 商品マスタに追加
+    const newProductRow = [
+      newId,
+      name,
+      parseInt(price),
+      parseInt(order) || existingProducts.length + 1,
+      true,
+      new Date(),
+      new Date()
+    ];
+    masterSheet.appendRow(newProductRow);
+    
+    // 在庫管理票に追加
+    const newInventoryRow = [
+      newId,
+      name,
+      parseInt(price),
+      parseInt(stock) || 10,
+      0,
+      parseInt(stock) || 10,
+      3,
+      new Date()
+    ];
+    inventorySheet.appendRow(newInventoryRow);
+    
+    clearCache();
+    logSystemEvent('INFO', '新商品追加', `商品名: ${name}, ID: ${newId}`);
+    
+    return { success: true, message: `商品「${name}」を追加しました`, productId: newId };
+  } catch (error) {
+    console.error('❌ 新商品追加エラー:', error);
+    logSystemEvent('ERROR', '新商品追加エラー', error.toString());
+    return { success: false, message: '商品追加に失敗しました: ' + error.message };
+  }
+}
+
+// 予約データエクスポート
+function exportOrders() {
+  try {
+    const orders = getAllOrders();
+    const csvData = [
+      ['予約ID', 'タイムスタンプ', '姓', '名', 'メール', '受取日', '受取時間', 
+       '商品詳細', '合計金額', '引渡状況', 'その他要望']
+    ];
+    
+    orders.forEach(order => {
+      csvData.push([
+        order.orderId,
+        order.timestamp,
+        order.lastName,
+        order.firstName,
+        order.email,
+        order.pickupDate,
+        order.pickupTime,
+        order.productsDisplay,
+        order.totalPrice,
+        order.deliveryStatus,
+        order.note
+      ]);
+    });
+    
+    return { success: true, data: csvData, message: '予約データをエクスポートしました' };
+  } catch (error) {
+    console.error('❌ 予約エクスポートエラー:', error);
+    return { success: false, message: '予約エクスポートに失敗しました: ' + error.message };
+  }
+}
+
+// 在庫数更新
+function updateStock(productId, newStock, minStock) {
+  try {
+    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
+    const inventorySheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.INVENTORY);
+    
+    const data = inventorySheet.getDataRange().getValues();
+    
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === productId) {
+        inventorySheet.getRange(i + 1, 4).setValue(parseInt(newStock));
+        if (minStock !== undefined) {
+          inventorySheet.getRange(i + 1, 7).setValue(parseInt(minStock));
+        }
+        inventorySheet.getRange(i + 1, 8).setValue(new Date());
+        break;
+      }
+    }
+    
+    updateInventoryFromOrders();
+    clearCache();
+    
+    logSystemEvent('INFO', '在庫更新', `商品ID: ${productId}, 新在庫: ${newStock}`);
+    
+    return { success: true, message: '在庫を更新しました' };
+  } catch (error) {
+    console.error('❌ 在庫更新エラー:', error);
+    return { success: false, message: '在庫更新に失敗しました: ' + error.message };
+  }
+}
+
+// ===== システム初期化 =====
+function checkAndInitializeSystem() {
+  try {
+    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
+    const sheets = spreadsheet.getSheets().map(s => s.getName());
+    
+    let missingSheets = [];
+    Object.values(SYSTEM_CONFIG.sheets).forEach(sheetName => {
+      if (!sheets.includes(sheetName)) {
+        try {
+          initializeSheet(spreadsheet, sheetName);
+          console.log('✅ シート作成完了:', sheetName);
+        } catch (error) {
+          console.error('❌ シート作成エラー:', sheetName, error);
+          missingSheets.push(sheetName);
+        }
+      }
+    });
+    
+    if (missingSheets.length > 0) {
+      return {
+        success: false,
+        error: `シート初期化失敗: ${missingSheets.join(', ')}`
+      };
+    }
+    
+    console.log('✅ システム初期化完了');
+    return { success: true };
+    
+  } catch (error) {
+    console.error('❌ システム初期化エラー:', error);
+    return {
+      success: false,
+      error: 'スプレッドシートにアクセスできません: ' + error.message
+    };
+  }
+}
+
+// ===== 在庫データ取得 =====
+function getInventoryDataForForm() {
+  try {
+    if (SYSTEM_CONFIG.cache.enabled) {
+      const cache = CacheService.getScriptCache();
+      const cachedInventory = cache.get(SYSTEM_CONFIG.cache.keys.inventory);
+      
+      if (cachedInventory) {
+        console.log('📋 在庫データをキャッシュから取得');
+        return JSON.parse(cachedInventory);
+      }
+    }
+    
+    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
+    const inventorySheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.INVENTORY);
+    const products = getProductMaster().filter(p => p.enabled);
+    
+    if (!inventorySheet || inventorySheet.getLastRow() <= 1) {
+      const defaultInventory = products.map(p => ({
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        stock: 10,
+        reserved: 0,
+        remaining: 10,
+        minStock: 3
+      }));
+      
+      if (SYSTEM_CONFIG.cache.enabled) {
+        const cache = CacheService.getScriptCache();
+        cache.put(SYSTEM_CONFIG.cache.keys.inventory, JSON.stringify(defaultInventory), SYSTEM_CONFIG.cache.duration);
+      }
+      
+      return defaultInventory;
+    }
+    
+    updateInventoryFromOrders();
+    
+    const data = inventorySheet.getDataRange().getValues();
+    const inventory = [];
+    
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const product = products.find(p => p.id === row[0]);
+      
+      if (product) {
+        inventory.push({
+          id: row[0],
+          name: row[1],
+          price: row[2],
+          stock: row[3] || 0,
+          reserved: row[4] || 0,
+          remaining: Math.max(0, (row[3] || 0) - (row[4] || 0)),
+          minStock: row[6] || 3
+        });
+      }
+    }
+    
+    const sortedInventory = inventory.sort((a, b) => {
+      const aProduct = products.find(p => p.id === a.id);
+      const bProduct = products.find(p => p.id === b.id);
+      return (aProduct?.order || 0) - (bProduct?.order || 0);
+    });
+    
+    if (SYSTEM_CONFIG.cache.enabled) {
+      const cache = CacheService.getScriptCache();
+      cache.put(SYSTEM_CONFIG.cache.keys.inventory, JSON.stringify(sortedInventory), SYSTEM_CONFIG.cache.duration);
+    }
+    
+    return sortedInventory;
+    
+  } catch (error) {
+    console.error('❌ 在庫データ取得エラー:', error);
+    const products = getProductMaster().filter(p => p.enabled);
+    return products.map(p => ({
+      id: p.id,
+      name: p.name,
+      price: p.price,
+      stock: 10,
+      reserved: 0,
+      remaining: 10,
+      minStock: 3
+    }));
+  }
+}
+
+// ===== 受取時間生成関数 =====
+function generatePickupTimeOptions() {
+  const times = [];
+  const config = SYSTEM_CONFIG.pickupTimes;
+  
+  for (let hour = config.start; hour <= config.end; hour++) {
+    for (let minute = 0; minute < 60; minute += config.interval) {
+      const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      times.push({
+        value: timeString,
+        label: timeString,
+        available: true
+      });
+    }
+  }
+  
+  return times;
+}
+
+// ===== キャッシュクリア関数 =====
+function clearCache() {
+  try {
+    const cache = CacheService.getScriptCache();
+    cache.removeAll([
+      'dashboard_stats',
+      SYSTEM_CONFIG.cache.keys.inventory,
+      SYSTEM_CONFIG.cache.keys.orders,
+      SYSTEM_CONFIG.cache.keys.products
+    ]);
+    console.log('✅ キャッシュクリア完了');
+    return { success: true, message: 'キャッシュをクリアしました' };
+  } catch (error) {
+    console.error('❌ キャッシュクリアエラー:', error);
+    return { success: false, message: 'キャッシュクリアに失敗しました' };
+  }
+}
+
+// ===== 認証ページ生成 =====
 function createAuthenticationPage() {
   const html = `
     <!DOCTYPE html>
@@ -166,7 +951,7 @@ function createAuthenticationPage() {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-// 🔧 新規追加：フォールバックダッシュボード
+// ===== フォールバックダッシュボード =====
 function createFallbackDashboard() {
   const html = `
     <!DOCTYPE html>
@@ -206,8 +991,8 @@ function createFallbackDashboard() {
               <div class="col-md-6 mb-3">
                 <div class="card">
                   <div class="card-body text-center">
-                    <h5>📧 メール設定</h5>
-                    <a href="?action=email&password=${SYSTEM_CONFIG.adminPassword}" class="btn btn-primary">メール設定</a>
+                    <h5>🏠 予約フォーム</h5>
+                    <a href="?" class="btn btn-primary">予約フォームへ</a>
                   </div>
                 </div>
               </div>
@@ -242,577 +1027,7 @@ function createFallbackDashboard() {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-// ===== システム初期化（改良版） =====
-function checkAndInitializeSystem() {
-  try {
-    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
-    const sheets = spreadsheet.getSheets().map(s => s.getName());
-    
-    let missingSheets = [];
-    Object.values(SYSTEM_CONFIG.sheets).forEach(sheetName => {
-      if (!sheets.includes(sheetName)) {
-        try {
-          initializeSheet(spreadsheet, sheetName);
-          console.log('✅ シート作成完了:', sheetName);
-        } catch (error) {
-          console.error('❌ シート作成エラー:', sheetName, error);
-          missingSheets.push(sheetName);
-        }
-      }
-    });
-    
-    if (missingSheets.length > 0) {
-      return {
-        success: false,
-        error: `シート初期化失敗: ${missingSheets.join(', ')}`
-      };
-    }
-    
-    console.log('✅ システム初期化完了');
-    return { success: true };
-    
-  } catch (error) {
-    console.error('❌ システム初期化エラー:', error);
-    return {
-      success: false,
-      error: 'スプレッドシートにアクセスできません: ' + error.message
-    };
-  }
-}
-
-// 🔧 改良版：データ取得関数（キャッシュ機能付き）
-function getDashboardStats() {
-  try {
-    console.log('📊 統計データ取得開始（キャッシュ対応）');
-    
-    // キャッシュチェック
-    if (SYSTEM_CONFIG.cache.enabled) {
-      const cache = CacheService.getScriptCache();
-      const cachedStats = cache.get('dashboard_stats');
-      
-      if (cachedStats) {
-        console.log('📋 キャッシュからデータ取得');
-        return JSON.parse(cachedStats);
-      }
-    }
-    
-    const orders = getOrderList();
-    const inventory = getInventoryDataForForm();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // 今日の予約（受取日ベース）
-    const todayOrders = orders.filter(order => {
-      if (!order.pickupDate) return false;
-      try {
-        const pickupDate = new Date(order.pickupDate);
-        pickupDate.setHours(0, 0, 0, 0);
-        return pickupDate.getTime() === today.getTime();
-      } catch (e) {
-        return false;
-      }
-    });
-    
-    // 未引渡し予約
-    const pendingOrders = orders.filter(order => !order.isDelivered);
-    
-    // 在庫アラート
-    const outOfStock = inventory.filter(p => p.remaining <= 0);
-    const lowStock = inventory.filter(p => p.remaining > 0 && p.remaining <= (p.minStock || 3));
-    
-    // 今月の売上計算
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-    const monthOrders = orders.filter(order => {
-      if (!order.timestamp) return false;
-      try {
-        const orderDate = new Date(order.timestamp);
-        return orderDate.getMonth() === currentMonth && 
-               orderDate.getFullYear() === currentYear;
-      } catch (e) {
-        return false;
-      }
-    });
-    const monthRevenue = monthOrders.reduce((sum, order) => sum + (order.totalPrice || 0), 0);
-    
-    const stats = {
-      todayOrdersCount: todayOrders.length,
-      pendingOrdersCount: pendingOrders.length,
-      outOfStockCount: outOfStock.length,
-      lowStockCount: lowStock.length,
-      totalProducts: inventory.length,
-      todayRevenue: todayOrders.reduce((sum, order) => sum + (order.totalPrice || 0), 0),
-      monthRevenue: monthRevenue,
-      systemVersion: SYSTEM_CONFIG.version,
-      lastUpdate: new Date().toISOString(),
-      systemHealth: {
-        ordersCount: orders.length,
-        inventoryItems: inventory.length,
-        cacheEnabled: SYSTEM_CONFIG.cache.enabled
-      }
-    };
-    
-    // キャッシュに保存
-    if (SYSTEM_CONFIG.cache.enabled) {
-      const cache = CacheService.getScriptCache();
-      cache.put('dashboard_stats', JSON.stringify(stats), SYSTEM_CONFIG.cache.duration);
-    }
-    
-    console.log('📊 統計データ取得完了');
-    return stats;
-    
-  } catch (error) {
-    console.error('❌ 統計データ取得エラー:', error);
-    logSystemEvent('ERROR', '統計データ取得エラー', error.toString());
-    return {
-      todayOrdersCount: 0,
-      pendingOrdersCount: 0,
-      outOfStockCount: 0,
-      lowStockCount: 0,
-      totalProducts: 0,
-      todayRevenue: 0,
-      monthRevenue: 0,
-      systemVersion: SYSTEM_CONFIG.version,
-      lastUpdate: new Date().toISOString(),
-      error: error.toString()
-    };
-  }
-}
-
-// 🔧 新規追加：受取時間選択肢生成関数
-function generatePickupTimeOptions() {
-  const times = [];
-  const config = SYSTEM_CONFIG.pickupTimes;
-  
-  for (let hour = config.start; hour <= config.end; hour++) {
-    for (let minute = 0; minute < 60; minute += config.interval) {
-      const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-      times.push({
-        value: timeString,
-        label: timeString,
-        available: true
-      });
-    }
-  }
-  
-  return times;
-}
-
-// 🔧 改良版：予約一覧取得（処理速度最適化）
-function getOrderList() {
-  try {
-    console.log('📊 予約一覧取得開始（最適化版）');
-    
-    // キャッシュチェック
-    if (SYSTEM_CONFIG.cache.enabled) {
-      const cache = CacheService.getScriptCache();
-      const cachedOrders = cache.get(SYSTEM_CONFIG.cache.keys.orders);
-      
-      if (cachedOrders) {
-        console.log('📋 予約データをキャッシュから取得');
-        return JSON.parse(cachedOrders);
-      }
-    }
-    
-    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
-    const orderSheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.ORDER);
-    
-    if (!orderSheet || orderSheet.getLastRow() <= 1) {
-      console.log('⚠️ 予約データが存在しません');
-      return [];
-    }
-    
-    // 🔧 処理速度向上：一括データ取得
-    const range = orderSheet.getDataRange();
-    const data = range.getValues();
-    const products = getProductMaster();
-    
-    console.log(`📋 データ処理開始: ${data.length - 1}行, ${products.length}商品`);
-    
-    const orders = [];
-    
-    // 🔧 改良：並列処理風のデータ解析
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i];
-      
-      // 基本データチェック（高速化）
-      if (!row[0] || (!row[1] && !row[2])) {
-        continue;
-      }
-      
-      // 受取日の正規化（高速化）
-      let pickupDate = '';
-      if (row[4]) {
-        pickupDate = normalizeDate(row[4]);
-      }
-      
-      // 予約ID処理（高速化）
-      let orderId = row[36] || generateOrderId();
-      
-      const order = {
-        rowIndex: i + 1,
-        timestamp: row[0],
-        lastName: row[1] || '',
-        firstName: row[2] || '',
-        email: row[3] || '',
-        pickupDate: pickupDate,
-        pickupTime: row[5] || '',
-        items: [],
-        note: row[33] || '',
-        totalPrice: parseFloat(row[34]) || 0,
-        isDelivered: row[35] === '引渡済',
-        orderId: orderId,
-        updatedAt: row[0] || new Date()
-      };
-      
-      // 商品データ解析（最適化）
-      let totalCalculatedPrice = 0;
-      for (let j = 6; j <= 32; j++) {
-        const quantity = parseInt(row[j]) || 0;
-        if (quantity > 0) {
-          const productIndex = j - 6;
-          
-          if (productIndex < products.length) {
-            const product = products[productIndex];
-            const subtotal = quantity * product.price;
-            
-            order.items.push({
-              productId: product.id,
-              name: product.name,
-              quantity: quantity,
-              price: product.price,
-              subtotal: subtotal
-            });
-            
-            totalCalculatedPrice += subtotal;
-          }
-        }
-      }
-      
-      // 金額補完
-      if (order.totalPrice === 0 && totalCalculatedPrice > 0) {
-        order.totalPrice = totalCalculatedPrice;
-      }
-      
-      orders.push(order);
-    }
-    
-    // 🔧 改良：ソート最適化（受取日時昇順）
-    orders.sort((a, b) => {
-      const dateTimeA = new Date(a.pickupDate + ' ' + (a.pickupTime || '00:00'));
-      const dateTimeB = new Date(b.pickupDate + ' ' + (b.pickupTime || '00:00'));
-      
-      const timeDiff = dateTimeA.getTime() - dateTimeB.getTime();
-      if (timeDiff !== 0) return timeDiff;
-      
-      const timestampA = new Date(a.timestamp);
-      const timestampB = new Date(b.timestamp);
-      return timestampA.getTime() - timestampB.getTime();
-    });
-    
-    // キャッシュに保存
-    if (SYSTEM_CONFIG.cache.enabled) {
-      const cache = CacheService.getScriptCache();
-      cache.put(SYSTEM_CONFIG.cache.keys.orders, JSON.stringify(orders), SYSTEM_CONFIG.cache.duration);
-    }
-    
-    console.log(`📊 予約一覧取得完了: ${orders.length}件（最適化済み）`);
-    return orders;
-    
-  } catch (error) {
-    console.error('❌ 予約一覧取得エラー:', error);
-    logSystemEvent('ERROR', '予約一覧取得エラー', error.toString());
-    return [];
-  }
-}
-
-// 🔧 新規追加：日付正規化関数（処理速度向上）
-function normalizeDate(dateValue) {
-  try {
-    if (dateValue instanceof Date) {
-      return Utilities.formatDate(dateValue, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-    } else if (typeof dateValue === 'string') {
-      const dateStr = dateValue.toString().trim();
-      if (dateStr.match(/^\d{4}[-\/]\d{1,2}[-\/]\d{1,2}$/)) {
-        const parts = dateStr.split(/[-\/]/);
-        return `${parts[0]}-${('0' + parts[1]).slice(-2)}-${('0' + parts[2]).slice(-2)}`;
-      }
-      return dateStr;
-    }
-    return '';
-  } catch (error) {
-    console.warn('⚠️ 日付正規化エラー:', dateValue, error);
-    return '';
-  }
-}
-
-// 🔧 改良版：在庫データ取得（キャッシュ対応）
-function getInventoryDataForForm() {
-  try {
-    // キャッシュチェック
-    if (SYSTEM_CONFIG.cache.enabled) {
-      const cache = CacheService.getScriptCache();
-      const cachedInventory = cache.get(SYSTEM_CONFIG.cache.keys.inventory);
-      
-      if (cachedInventory) {
-        console.log('📋 在庫データをキャッシュから取得');
-        return JSON.parse(cachedInventory);
-      }
-    }
-    
-    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
-    const inventorySheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.INVENTORY);
-    const products = getProductMaster().filter(p => p.enabled);
-    
-    if (!inventorySheet || inventorySheet.getLastRow() <= 1) {
-      const defaultInventory = products.map(p => ({
-        id: p.id,
-        name: p.name,
-        price: p.price,
-        stock: 10,
-        reserved: 0,
-        remaining: 10,
-        minStock: 3
-      }));
-      
-      // デフォルトデータもキャッシュ
-      if (SYSTEM_CONFIG.cache.enabled) {
-        const cache = CacheService.getScriptCache();
-        cache.put(SYSTEM_CONFIG.cache.keys.inventory, JSON.stringify(defaultInventory), SYSTEM_CONFIG.cache.duration);
-      }
-      
-      return defaultInventory;
-    }
-    
-    updateInventoryFromOrders();
-    
-    const data = inventorySheet.getDataRange().getValues();
-    const inventory = [];
-    
-    for (let i = 1; i < data.length; i++) {
-      const row = data[i];
-      const product = products.find(p => p.id === row[0]);
-      
-      if (product) {
-        inventory.push({
-          id: row[0],
-          name: row[1],
-          price: row[2],
-          stock: row[3] || 0,
-          reserved: row[4] || 0,
-          remaining: Math.max(0, (row[3] || 0) - (row[4] || 0)),
-          minStock: row[6] || 3
-        });
-      }
-    }
-    
-    const sortedInventory = inventory.sort((a, b) => {
-      const aProduct = products.find(p => p.id === a.id);
-      const bProduct = products.find(p => p.id === b.id);
-      return (aProduct?.order || 0) - (bProduct?.order || 0);
-    });
-    
-    // キャッシュに保存
-    if (SYSTEM_CONFIG.cache.enabled) {
-      const cache = CacheService.getScriptCache();
-      cache.put(SYSTEM_CONFIG.cache.keys.inventory, JSON.stringify(sortedInventory), SYSTEM_CONFIG.cache.duration);
-    }
-    
-    return sortedInventory;
-    
-  } catch (error) {
-    console.error('❌ 在庫データ取得エラー:', error);
-    const products = getProductMaster().filter(p => p.enabled);
-    return products.map(p => ({
-      id: p.id,
-      name: p.name,
-      price: p.price,
-      stock: 10,
-      reserved: 0,
-      remaining: 10,
-      minStock: 3
-    }));
-  }
-}
-
-// 🔧 新規追加：キャッシュクリア関数
-function clearCache() {
-  try {
-    const cache = CacheService.getScriptCache();
-    cache.removeAll([
-      'dashboard_stats',
-      SYSTEM_CONFIG.cache.keys.inventory,
-      SYSTEM_CONFIG.cache.keys.orders,
-      SYSTEM_CONFIG.cache.keys.products
-    ]);
-    console.log('✅ キャッシュクリア完了');
-    return { success: true, message: 'キャッシュをクリアしました' };
-  } catch (error) {
-    console.error('❌ キャッシュクリアエラー:', error);
-    return { success: false, message: 'キャッシュクリアに失敗しました' };
-  }
-}
-
-// ===== その他の既存関数（最適化版） =====
-
-// 引渡状態更新（最適化版）
-function updateDeliveryStatus(rowIndex, isDelivered) {
-  try {
-    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
-    const orderSheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.ORDER);
-    
-    const deliveredCol = 36;
-    const statusValue = isDelivered ? '引渡済' : '未引渡';
-    
-    orderSheet.getRange(rowIndex, deliveredCol).setValue(statusValue);
-    
-    // キャッシュクリア
-    clearCache();
-    
-    updateInventoryFromOrders();
-    
-    const row = orderSheet.getRange(rowIndex, 1, 1, orderSheet.getLastColumn()).getValues()[0];
-    const customerName = `${row[1]} ${row[2]}`;
-    logSystemEvent('INFO', '引渡状態変更',
-      `顧客: ${customerName}, 状態: ${isDelivered ? '引渡済' : '未引渡'}`);
-    
-    return {
-      success: true,
-      message: isDelivered ? '引渡完了にしました' : '引渡待ちに戻しました'
-    };
-  } catch (error) {
-    console.error('❌ 引渡状態更新エラー:', error);
-    logSystemEvent('ERROR', '引渡状態更新エラー', error.toString());
-    return {
-      success: false,
-      message: '更新に失敗しました: ' + error.message
-    };
-  }
-}
-
-// 予約処理（最適化版）
-function processOrder(formData) {
-  try {
-    console.log('🔄 予約処理開始（最適化版）:', JSON.stringify(formData, null, 2));
-    
-    // バリデーション
-    if (!formData.lastName || !formData.firstName || !formData.email ||
-        !formData.pickupDate || !formData.pickupTime) {
-      throw new Error('必須項目が入力されていません');
-    }
-    
-    // 在庫チェック（最適化）
-    const inventory = getInventoryDataForForm();
-    const products = getProductMaster().filter(p => p.enabled);
-    const orderedItems = [];
-    let totalPrice = 0;
-    
-    // 🔧 改良：在庫チェックの高速化
-    const outOfStockItems = [];
-    for (let i = 0; i < products.length; i++) {
-      const quantity = parseInt(formData[`product_${i}`]) || 0;
-      if (quantity > 0) {
-        const product = products[i];
-        const inventoryItem = inventory.find(inv => inv.id === product.id);
-        
-        if (!inventoryItem || inventoryItem.remaining < quantity) {
-          outOfStockItems.push(`${product.name}（要求: ${quantity}個, 在庫: ${inventoryItem?.remaining || 0}個）`);
-          continue;
-        }
-        
-        orderedItems.push({
-          productId: product.id,
-          name: product.name,
-          quantity: quantity,
-          price: product.price,
-          subtotal: quantity * product.price
-        });
-        totalPrice += quantity * product.price;
-      }
-    }
-    
-    if (outOfStockItems.length > 0) {
-      throw new Error(`在庫不足: ${outOfStockItems.join(', ')}`);
-    }
-    
-    if (orderedItems.length === 0) {
-      throw new Error('商品を1つ以上選択してください');
-    }
-    
-    // 予約ID生成
-    const orderId = generateOrderId();
-    
-    // スプレッドシート記録（最適化）
-    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
-    const orderSheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.ORDER);
-    const lastRow = orderSheet.getLastRow() + 1;
-    
-    // 🔧 改良：一括書き込みで処理速度向上
-    const rowData = new Array(37).fill(''); // AK列まで
-    const currentDate = new Date();
-    
-    rowData[0] = currentDate;              // A列：タイムスタンプ
-    rowData[1] = formData.lastName;        // B列：姓
-    rowData[2] = formData.firstName;       // C列：名
-    rowData[3] = formData.email;           // D列：メール
-    rowData[4] = formData.pickupDate;      // E列：受取日
-    rowData[5] = formData.pickupTime;      // F列：受取時間
-    
-    // 商品数量（G~AG列：インデックス6~32）
-    for (let i = 0; i < products.length; i++) {
-      const quantity = parseInt(formData[`product_${i}`]) || 0;
-      rowData[6 + i] = quantity;
-    }
-    
-    rowData[33] = formData.note || '';     // AH列：その他のご要望
-    rowData[34] = totalPrice;              // AI列：合計金額
-    rowData[35] = '未引渡';                // AJ列：引渡済
-    rowData[36] = orderId;                 // AK列：予約ID
-    
-    // 一括書き込み
-    orderSheet.getRange(lastRow, 1, 1, rowData.length).setValues([rowData]);
-    
-    // キャッシュクリア
-    clearCache();
-    
-    // 在庫更新
-    updateInventoryFromOrders();
-    
-    // メール送信
-    console.log('📧 メール送信処理開始');
-    const emailResults = sendOrderEmails(formData, orderedItems, totalPrice, orderId);
-    console.log('📧 メール送信結果:', emailResults);
-    
-    // ログ記録
-    logSystemEvent('INFO', '新規予約',
-      `顧客: ${formData.lastName} ${formData.firstName}, 金額: ¥${totalPrice}, 予約ID: ${orderId}, メール送信: ${emailResults.success ? '成功' : '失敗'}`);
-    
-    return {
-      success: true,
-      message: '予約が完了しました',
-      orderDetails: {
-        orderId: orderId,
-        name: `${formData.lastName} ${formData.firstName}`,
-        email: formData.email,
-        pickupDate: formData.pickupDate,
-        pickupTime: formData.pickupTime,
-        items: orderedItems,
-        totalPrice: totalPrice
-      },
-      emailResult: emailResults
-    };
-    
-  } catch (error) {
-    console.error('❌ 予約処理エラー:', error);
-    logSystemEvent('ERROR', '予約処理エラー', error.toString());
-    return {
-      success: false,
-      message: error.message
-    };
-  }
-}
-
-// ===== 既存の関数（変更なし） =====
+// ===== その他のヘルパー関数 =====
 function include(filename) {
   try {
     return HtmlService.createHtmlOutputFromFile(filename).getContent();
@@ -831,21 +1046,6 @@ function handleOrderForm() {
   } catch (error) {
     console.error('❌ OrderForm読み込みエラー:', error);
     return createErrorPage('予約フォームの読み込みに失敗しました', 'OrderForm.htmlファイルが見つかりません。');
-  }
-}
-
-function handleEmailSettings(password) {
-  if (password !== SYSTEM_CONFIG.adminPassword) {
-    return createRedirectPage('認証失敗', '?');
-  }
-  
-  try {
-    return HtmlService.createHtmlOutputFromFile('EmailSettings')
-      .setTitle('Hyggelyカンパーニュ専門店 メール設定')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1')
-      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  } catch (error) {
-    return createErrorPage('メール設定の読み込みに失敗しました', error.toString());
   }
 }
 
@@ -906,74 +1106,41 @@ function createErrorPage(title, message) {
   return HtmlService.createHtmlOutput(html);
 }
 
-function createRedirectPage(message, url) {
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1">
-      <title>リダイレクト中...</title>
-    </head>
-    <body style="text-align: center; padding: 100px; font-family: Arial;">
-      <h2>${message}</h2>
-      <p>3秒後にリダイレクトします...</p>
-      <script>setTimeout(() => window.location.href = '${url}', 3000);</script>
-    </body>
-    </html>
-  `;
-  
-  return HtmlService.createHtmlOutput(html);
-}
-
-// ===== その他の既存関数（変更なし）=====
-// 以下の関数は既存のまま使用
-// - getProductMaster()
-// - initializeSheet()
-// - getDefaultProducts()
-// - updateInventoryFromOrders()
-// - generateOrderId()
-// - logSystemEvent()
-// - getEmailSettings()
-// - sendOrderEmails()
-// - その他のヘルパー関数
-
-// 🔧 商品マスタ（修正版 - 変更なし）
+// ===== 商品マスタ関連 =====
 function getDefaultProducts() {
   return [
-    {id: 'PRD001', name: 'プレミアムカンパーニュ', price: 1000, order: 1},           // G列
-    {id: 'PRD002', name: 'プレミアムカンパーニュ 1/2', price: 600, order: 2},        // H列
-    {id: 'PRD003', name: 'レーズン&クルミ', price: 1200, order: 3},                  // I列
-    {id: 'PRD004', name: 'レーズン&クルミ 1/2', price: 600, order: 4},               // J列
-    {id: 'PRD005', name: 'いちじく&クルミ', price: 400, order: 5},                   // K列
-    {id: 'PRD006', name: '4種のMIXナッツ', price: 400, order: 6},                   // L列
-    {id: 'PRD007', name: 'MIXドライフルーツ', price: 400, order: 7},                 // M列
-    {id: 'PRD008', name: 'アールグレイ', price: 350, order: 8},                     // N列
-    {id: 'PRD009', name: 'チョコレート', price: 450, order: 9},                     // O列
-    {id: 'PRD010', name: 'チーズ', price: 450, order: 10},                         // P列
-    {id: 'PRD011', name: 'ひまわりの種', price: 400, order: 11},                    // Q列
-    {id: 'PRD012', name: 'デーツ', price: 400, order: 12},                         // R列
-    {id: 'PRD013', name: 'カレーパン', price: 450, order: 13},                     // S列
-    {id: 'PRD014', name: 'バターロール', price: 230, order: 14},                   // T列
-    {id: 'PRD015', name: 'ショコラロール', price: 280, order: 15},                 // U列
-    {id: 'PRD016', name: '自家製クリームパン', price: 350, order: 16},               // V列
-    {id: 'PRD017', name: '自家製あんバター', price: 380, order: 17},                 // W列
-    {id: 'PRD018', name: '抹茶&ホワイトチョコ', price: 400, order: 18},             // X列
-    {id: 'PRD019', name: '黒ごまパン', price: 200, order: 19},                     // Y列
-    {id: 'PRD020', name: 'レーズンジャムとクリームチーズのパン', price: 350, order: 20}, // Z列
-    {id: 'PRD021', name: 'ピーナッツクリームパン', price: 350, order: 21},           // AA列
-    {id: 'PRD022', name: 'あん食パン', price: 400, order: 22},                     // AB列
-    {id: 'PRD023', name: 'コーンパン', price: 400, order: 23},                     // AC列
-    {id: 'PRD024', name: 'レモンとクリームチーズのミニ食パン', price: 450, order: 24}, // AD列
-    {id: 'PRD025', name: 'ピザ マルゲリータ', price: 1100, order: 25},              // AE列
-    {id: 'PRD026', name: 'ピタパンサンド', price: 800, order: 26},                  // AF列
-    {id: 'PRD027', name: 'フォカッチャ', price: 300, order: 27}                    // AG列
+    {id: 'PRD001', name: 'プレミアムカンパーニュ', price: 1000, order: 1},
+    {id: 'PRD002', name: 'プレミアムカンパーニュ 1/2', price: 600, order: 2},
+    {id: 'PRD003', name: 'レーズン&クルミ', price: 1200, order: 3},
+    {id: 'PRD004', name: 'レーズン&クルミ 1/2', price: 600, order: 4},
+    {id: 'PRD005', name: 'いちじく&クルミ', price: 400, order: 5},
+    {id: 'PRD006', name: '4種のMIXナッツ', price: 400, order: 6},
+    {id: 'PRD007', name: 'MIXドライフルーツ', price: 400, order: 7},
+    {id: 'PRD008', name: 'アールグレイ', price: 350, order: 8},
+    {id: 'PRD009', name: 'チョコレート', price: 450, order: 9},
+    {id: 'PRD010', name: 'チーズ', price: 450, order: 10},
+    {id: 'PRD011', name: 'ひまわりの種', price: 400, order: 11},
+    {id: 'PRD012', name: 'デーツ', price: 400, order: 12},
+    {id: 'PRD013', name: 'カレーパン', price: 450, order: 13},
+    {id: 'PRD014', name: 'バターロール', price: 230, order: 14},
+    {id: 'PRD015', name: 'ショコラロール', price: 280, order: 15},
+    {id: 'PRD016', name: '自家製クリームパン', price: 350, order: 16},
+    {id: 'PRD017', name: '自家製あんバター', price: 380, order: 17},
+    {id: 'PRD018', name: '抹茶&ホワイトチョコ', price: 400, order: 18},
+    {id: 'PRD019', name: '黒ごまパン', price: 200, order: 19},
+    {id: 'PRD020', name: 'レーズンジャムとクリームチーズのパン', price: 350, order: 20},
+    {id: 'PRD021', name: 'ピーナッツクリームパン', price: 350, order: 21},
+    {id: 'PRD022', name: 'あん食パン', price: 400, order: 22},
+    {id: 'PRD023', name: 'コーンパン', price: 400, order: 23},
+    {id: 'PRD024', name: 'レモンとクリームチーズのミニ食パン', price: 450, order: 24},
+    {id: 'PRD025', name: 'ピザ マルゲリータ', price: 1100, order: 25},
+    {id: 'PRD026', name: 'ピタパンサンド', price: 800, order: 26},
+    {id: 'PRD027', name: 'フォカッチャ', price: 300, order: 27}
   ];
 }
 
 function getProductMaster() {
   try {
-    // キャッシュチェック
     if (SYSTEM_CONFIG.cache.enabled) {
       const cache = CacheService.getScriptCache();
       const cachedProducts = cache.get(SYSTEM_CONFIG.cache.keys.products);
@@ -989,7 +1156,6 @@ function getProductMaster() {
     if (!masterSheet || masterSheet.getLastRow() <= 1) {
       const defaultProducts = getDefaultProducts().map(p => ({ ...p, enabled: true }));
       
-      // キャッシュに保存
       if (SYSTEM_CONFIG.cache.enabled) {
         const cache = CacheService.getScriptCache();
         cache.put(SYSTEM_CONFIG.cache.keys.products, JSON.stringify(defaultProducts), SYSTEM_CONFIG.cache.duration);
@@ -1014,7 +1180,6 @@ function getProductMaster() {
     
     const sortedProducts = products.sort((a, b) => a.order - b.order);
     
-    // キャッシュに保存
     if (SYSTEM_CONFIG.cache.enabled) {
       const cache = CacheService.getScriptCache();
       cache.put(SYSTEM_CONFIG.cache.keys.products, JSON.stringify(sortedProducts), SYSTEM_CONFIG.cache.duration);
@@ -1027,6 +1192,7 @@ function getProductMaster() {
   }
 }
 
+// ===== シート初期化関数 =====
 function initializeSheet(spreadsheet, sheetName) {
   try {
     let sheet = spreadsheet.insertSheet(sheetName);
@@ -1040,9 +1206,6 @@ function initializeSheet(spreadsheet, sheetName) {
         break;
       case SYSTEM_CONFIG.sheets.ORDER:
         initOrderSheet(sheet);
-        break;
-      case SYSTEM_CONFIG.sheets.EMAIL_SETTINGS:
-        initEmailSettings(sheet);
         break;
       case SYSTEM_CONFIG.sheets.SYSTEM_LOG:
         initSystemLog(sheet);
@@ -1099,26 +1262,12 @@ function initInventory(sheet) {
   }
 }
 
-function initEmailSettings(sheet) {
-  const headers = ['設定項目', '設定値'];
-  const data = [
-    ['admin_email', 'hyggely2021@gmail.com'],
-    ['email_enabled', 'TRUE'],
-    ['customer_subject', 'Hyggelyカンパーニュ専門店 ご予約完了確認'],
-    ['customer_body', '{lastName} {firstName} 様\n\nご予約ありがとうございます。\n{orderItems}\n\n合計: ¥{totalPrice}\n受取日時: {pickupDateTime}'],
-    ['admin_subject', '【新規予約】{lastName} {firstName}様'],
-    ['admin_body', '新規予約\n\nお客様: {lastName} {firstName}\nメール: {email}\n受取: {pickupDateTime}\n{orderItems}\n合計: ¥{totalPrice}']
-  ];
-  
-  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-  sheet.getRange(2, 1, data.length, headers.length).setValues(data);
-}
-
 function initSystemLog(sheet) {
   const headers = ['タイムスタンプ', 'レベル', 'イベント', '詳細', 'ユーザー'];
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
 }
 
+// ===== 在庫更新関数 =====
 function updateInventoryFromOrders() {
   try {
     const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
@@ -1162,7 +1311,6 @@ function updateInventoryFromOrders() {
       }
     }
     
-    // キャッシュクリア
     clearCache();
     
   } catch (error) {
@@ -1170,6 +1318,127 @@ function updateInventoryFromOrders() {
   }
 }
 
+// ===== 予約処理関数 =====
+function processOrder(formData) {
+  try {
+    console.log('🔄 予約処理開始（修正版）:', JSON.stringify(formData, null, 2));
+    
+    // バリデーション
+    if (!formData.lastName || !formData.firstName || !formData.email ||
+        !formData.pickupDate || !formData.pickupTime) {
+      throw new Error('必須項目が入力されていません');
+    }
+    
+    // 在庫チェック
+    const inventory = getInventoryDataForForm();
+    const products = getProductMaster().filter(p => p.enabled);
+    const orderedItems = [];
+    let totalPrice = 0;
+    
+    const outOfStockItems = [];
+    for (let i = 0; i < products.length; i++) {
+      const quantity = parseInt(formData[`product_${i}`]) || 0;
+      if (quantity > 0) {
+        const product = products[i];
+        const inventoryItem = inventory.find(inv => inv.id === product.id);
+        
+        if (!inventoryItem || inventoryItem.remaining < quantity) {
+          outOfStockItems.push(`${product.name}（要求: ${quantity}個, 在庫: ${inventoryItem?.remaining || 0}個）`);
+          continue;
+        }
+        
+        orderedItems.push({
+          productId: product.id,
+          name: product.name,
+          quantity: quantity,
+          price: product.price,
+          subtotal: quantity * product.price
+        });
+        totalPrice += quantity * product.price;
+      }
+    }
+    
+    if (outOfStockItems.length > 0) {
+      throw new Error(`在庫不足: ${outOfStockItems.join(', ')}`);
+    }
+    
+    if (orderedItems.length === 0) {
+      throw new Error('商品を1つ以上選択してください');
+    }
+    
+    // 予約ID生成
+    const orderId = generateOrderId();
+    
+    // スプレッドシート記録
+    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
+    const orderSheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.ORDER);
+    const lastRow = orderSheet.getLastRow() + 1;
+    
+    const rowData = new Array(37).fill('');
+    const currentDate = new Date();
+    
+    rowData[0] = currentDate;
+    rowData[1] = formData.lastName;
+    rowData[2] = formData.firstName;
+    rowData[3] = formData.email;
+    rowData[4] = formData.pickupDate;
+    rowData[5] = formData.pickupTime;
+    
+    // 商品数量（G~AG列：インデックス6~32）
+    for (let i = 0; i < products.length; i++) {
+      const quantity = parseInt(formData[`product_${i}`]) || 0;
+      rowData[6 + i] = quantity;
+    }
+    
+    rowData[33] = formData.note || '';
+    rowData[34] = totalPrice;
+    rowData[35] = '未引渡';
+    rowData[36] = orderId;
+    
+    // 一括書き込み
+    orderSheet.getRange(lastRow, 1, 1, rowData.length).setValues([rowData]);
+    
+    // キャッシュクリア
+    clearCache();
+    
+    // 在庫更新
+    updateInventoryFromOrders();
+    
+    // メール送信
+    console.log('📧 メール送信処理開始');
+    const emailResults = sendOrderEmails(formData, orderedItems, totalPrice, orderId);
+    console.log('📧 メール送信結果:', emailResults);
+    
+    // ログ記録
+    logSystemEvent('INFO', '新規予約',
+      `顧客: ${formData.lastName} ${formData.firstName}, 金額: ¥${totalPrice}, 予約ID: ${orderId}, メール送信: ${emailResults.success ? '成功' : '失敗'}`);
+    
+    return {
+      success: true,
+      message: '予約が完了しました',
+      orderDetails: {
+        orderId: orderId,
+        name: `${formData.lastName} ${formData.firstName}`,
+        email: formData.email,
+        pickupDate: formData.pickupDate,
+        pickupTime: formData.pickupTime,
+        items: orderedItems,
+        totalPrice: totalPrice
+      },
+      emailResult: emailResults
+    };
+    
+  } catch (error) {
+    console.error('❌ 予約処理エラー:', error);
+    logSystemEvent('ERROR', '予約処理エラー', error.toString());
+    return {
+      success: false,
+      message: error.message
+    };
+  }
+}
+
+// ===== ユーティリティ関数 =====
 function generateOrderId() {
   const now = new Date();
   const dateStr = now.getFullYear().toString().slice(-2) +
@@ -1204,87 +1473,7 @@ function logSystemEvent(level, event, details, user = 'SYSTEM') {
   }
 }
 
-// メール関連の既存関数（変更なし）
-function getEmailSettings() {
-  try {
-    console.log('📧 メール設定取得開始');
-    
-    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
-    const emailSheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.EMAIL_SETTINGS);
-    
-    const defaultSettings = {
-      adminEmail: 'hyggely2021@gmail.com',
-      emailEnabled: true,
-      customerSubject: 'Hyggelyカンパーニュ専門店 ご予約完了確認',
-      customerBody: '{lastName} {firstName} 様\n\nHyggely事前予約システムをご利用いただき誠にありがとうございます。\n以下の注文内容で承りましたのでお知らせします。\n\n予約ID: {orderId}\n\n{orderItems}\n\n・合計　　　¥{totalPrice}\n\n・受取日時：{pickupDateTime}\n\n受取日当日に現金またはPayPayでお支払いいただきます。\n当日は気をつけてお越しください。\n\n※このメールは自動送信されています。返信はできませんのでご了承ください。\nご不明な点がございましたら、Hyggely公式LINEまでお問い合わせください。',
-      adminSubject: '【新規予約】{lastName} {firstName}様',
-      adminBody: '【新規予約通知】\n\n予約ID: {orderId}\n\nお客様情報:\n・氏名: {lastName} {firstName} 様\n・メール: {email}\n・受取日時: {pickupDateTime}\n\n注文内容:\n{orderItems}\n\n合計金額: ¥{totalPrice}\n\n※予約管理システムより自動送信されています。'
-    };
-    
-    if (!emailSheet || emailSheet.getLastRow() <= 1) {
-      console.log('⚠️ メール設定シートが存在しないか空です。デフォルト設定を使用します。');
-      return defaultSettings;
-    }
-    
-    const data = emailSheet.getDataRange().getValues();
-    const settings = { ...defaultSettings };
-    
-    for (let i = 1; i < data.length; i++) {
-      const key = data[i][0];
-      const value = data[i][1];
-      
-      if (!key) continue;
-      
-      switch (key.toLowerCase()) {
-        case 'admin_email':
-          if (value && typeof value === 'string') {
-            settings.adminEmail = value.trim();
-          }
-          break;
-        case 'email_enabled':
-          settings.emailEnabled = (value === 'TRUE' || value === true || value === 1);
-          break;
-        case 'customer_subject':
-          if (value && typeof value === 'string') {
-            settings.customerSubject = value;
-          }
-          break;
-        case 'customer_body':
-          if (value && typeof value === 'string') {
-            settings.customerBody = value;
-          }
-          break;
-        case 'admin_subject':
-          if (value && typeof value === 'string') {
-            settings.adminSubject = value;
-          }
-          break;
-        case 'admin_body':
-          if (value && typeof value === 'string') {
-            settings.adminBody = value;
-          }
-          break;
-      }
-    }
-    
-    console.log('✅ メール設定取得完了:', settings);
-    return settings;
-    
-  } catch (error) {
-    console.error('❌ メール設定取得エラー:', error);
-    logSystemEvent('ERROR', 'メール設定取得エラー', error.toString());
-    
-    return {
-      adminEmail: 'hyggely2021@gmail.com',
-      emailEnabled: true,
-      customerSubject: 'Hyggelyカンパーニュ専門店 ご予約完了確認',
-      customerBody: '{lastName} {firstName} 様\n\nご予約ありがとうございます。',
-      adminSubject: '【新規予約】{lastName} {firstName}様',
-      adminBody: '新規予約通知'
-    };
-  }
-}
-
+// ===== 🔧 簡略化されたメール関連関数 =====
 function sendOrderEmails(formData, orderedItems, totalPrice, orderId) {
   console.log('📧 メール送信統合処理開始');
   
@@ -1296,10 +1485,10 @@ function sendOrderEmails(formData, orderedItems, totalPrice, orderId) {
   };
   
   try {
-    const settings = getEmailSettings();
-    console.log('📧 取得した設定:', settings);
+    const settings = SYSTEM_CONFIG.email;
+    console.log('📧 固定設定使用:', settings.adminEmail);
     
-    if (!settings.emailEnabled) {
+    if (!settings.enabled) {
       console.log('⚠️ メール送信が無効に設定されています');
       results.errors.push('メール送信が無効に設定されています');
       return results;
@@ -1393,31 +1582,11 @@ function sendConfirmationEmail(formData, orderedItems, totalPrice, orderId, sett
     
     console.log('📧 顧客メール内容:', { to: formData.email, subject, body });
     
-    let attempt = 0;
-    const maxAttempts = 3;
+    GmailApp.sendEmail(formData.email, subject, body);
     
-    while (attempt < maxAttempts) {
-      try {
-        attempt++;
-        console.log(`📧 顧客メール送信試行 ${attempt}/${maxAttempts}`);
-        
-        GmailApp.sendEmail(formData.email, subject, body);
-        
-        console.log('✅ 顧客確認メール送信成功');
-        logSystemEvent('INFO', '顧客メール送信成功', `宛先: ${formData.email}, 予約ID: ${orderId}`);
-        return { success: true };
-        
-      } catch (sendError) {
-        console.error(`❌ 顧客メール送信試行 ${attempt} 失敗:`, sendError);
-        
-        if (attempt >= maxAttempts) {
-          logSystemEvent('ERROR', '顧客メール送信失敗', `宛先: ${formData.email}, エラー: ${sendError.toString()}`);
-          return { success: false, error: sendError.toString() };
-        }
-        
-        Utilities.sleep(1000);
-      }
-    }
+    console.log('✅ 顧客確認メール送信成功');
+    logSystemEvent('INFO', '顧客メール送信成功', `宛先: ${formData.email}, 予約ID: ${orderId}`);
+    return { success: true };
     
   } catch (error) {
     console.error('❌ 顧客メール送信エラー:', error);
@@ -1458,31 +1627,11 @@ function sendAdminNotification(formData, orderedItems, totalPrice, orderId, sett
     
     console.log('📧 管理者メール内容:', { to: settings.adminEmail, subject, body });
     
-    let attempt = 0;
-    const maxAttempts = 3;
+    GmailApp.sendEmail(settings.adminEmail, subject, body);
     
-    while (attempt < maxAttempts) {
-      try {
-        attempt++;
-        console.log(`📧 管理者メール送信試行 ${attempt}/${maxAttempts}`);
-        
-        GmailApp.sendEmail(settings.adminEmail, subject, body);
-        
-        console.log('✅ 管理者通知メール送信成功');
-        logSystemEvent('INFO', '管理者メール送信成功', `宛先: ${settings.adminEmail}, 予約ID: ${orderId}`);
-        return { success: true };
-        
-      } catch (sendError) {
-        console.error(`❌ 管理者メール送信試行 ${attempt} 失敗:`, sendError);
-        
-        if (attempt >= maxAttempts) {
-          logSystemEvent('ERROR', '管理者メール送信失敗', `宛先: ${settings.adminEmail}, エラー: ${sendError.toString()}`);
-          return { success: false, error: sendError.toString() };
-        }
-        
-        Utilities.sleep(1000);
-      }
-    }
+    console.log('✅ 管理者通知メール送信成功');
+    logSystemEvent('INFO', '管理者メール送信成功', `宛先: ${settings.adminEmail}, 予約ID: ${orderId}`);
+    return { success: true };
     
   } catch (error) {
     console.error('❌ 管理者メール送信エラー:', error);
@@ -1502,68 +1651,7 @@ function replaceEmailVariables(template, variables) {
   return result;
 }
 
-function updateEmailSettings(newSettings) {
-  try {
-    console.log('📧 メール設定更新開始:', newSettings);
-    
-    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
-    const emailSheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.EMAIL_SETTINGS);
-    
-    const data = [
-      ['admin_email', newSettings.adminEmail || 'hyggely2021@gmail.com'],
-      ['email_enabled', newSettings.emailEnabled ? 'TRUE' : 'FALSE'],
-      ['customer_subject', newSettings.customerSubject || 'Hyggelyカンパーニュ専門店 ご予約完了確認'],
-      ['customer_body', newSettings.customerBody || ''],
-      ['admin_subject', newSettings.adminSubject || '【新規予約】{lastName} {firstName}様'],
-      ['admin_body', newSettings.adminBody || '']
-    ];
-    
-    emailSheet.clear();
-    emailSheet.getRange(1, 1, 1, 2).setValues([['設定項目', '設定値']]);
-    emailSheet.getRange(2, 1, data.length, 2).setValues(data);
-    
-    logSystemEvent('INFO', 'メール設定更新', 'メール設定が更新されました');
-    console.log('✅ メール設定更新完了');
-    
-    return { success: true, message: 'メール設定を保存しました' };
-  } catch (error) {
-    console.error('❌ メール設定更新エラー:', error);
-    logSystemEvent('ERROR', 'メール設定更新エラー', error.toString());
-    return { success: false, message: '保存に失敗しました: ' + error.message };
-  }
-}
-
-function testEmailSending() {
-  try {
-    console.log('📧 メール送信テスト開始');
-    
-    const testFormData = {
-      lastName: 'テスト',
-      firstName: '太郎',
-      email: 'test@example.com',
-      pickupDate: '2024-12-25',
-      pickupTime: '14:00',
-      note: 'テスト注文です'
-    };
-    
-    const testItems = [
-      { name: 'プレミアムカンパーニュ', quantity: 1, price: 1000, subtotal: 1000 }
-    ];
-    
-    const testOrderId = 'TEST' + Date.now();
-    
-    const result = sendOrderEmails(testFormData, testItems, 1000, testOrderId);
-    
-    console.log('📧 テスト結果:', result);
-    return result;
-    
-  } catch (error) {
-    console.error('❌ メール送信テストエラー:', error);
-    return { success: false, error: error.toString() };
-  }
-}
-
-// その他のユーティリティ関数（変更なし）
+// ===== その他のユーティリティ関数 =====
 function testConnection() {
   return {
     success: true,
@@ -1573,218 +1661,6 @@ function testConnection() {
   };
 }
 
-function forceInitializeSystem() {
-  try {
-    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
-    
-    Object.values(SYSTEM_CONFIG.sheets).forEach(sheetName => {
-      const sheet = spreadsheet.getSheetByName(sheetName);
-      if (sheet) {
-        spreadsheet.deleteSheet(sheet);
-      }
-    });
-    
-    checkAndInitializeSystem();
-    
-    console.log('✅ システム強制初期化完了');
-    return { success: true, message: 'システムを初期化しました' };
-  } catch (error) {
-    console.error('❌ 強制初期化エラー:', error);
-    return { success: false, message: error.toString() };
-  }
-}
-
-function manualEmailTest() {
-  console.log('🧪 手動メールテスト実行');
-  const result = testEmailSending();
-  console.log('🧪 テスト完了:', result);
-  return result;
-}
-
-// プレースホルダー関数（実装省略）
-function addProduct(productData) {
-  return { success: true, message: '商品を追加しました' };
-}
-
-function updateProduct(productId, productData) {
-  return { success: true, message: '商品を更新しました' };
-}
-
-function deleteProduct(productId) {
-  return { success: true, message: '商品を削除しました' };
-}
-
-function updateOrderSheetHeaders() {
-  console.log('✅ 注文シートヘッダー更新完了');
-}
-
-function getOrderDetails(orderId) {
-  try {
-    const orders = getOrderList();
-    const order = orders.find(o => o.orderId === orderId);
-    
-    if (!order) {
-      return { success: false, message: '予約が見つかりません' };
-    }
-    
-    return { success: true, order: order };
-  } catch (error) {
-    console.error('❌ 予約詳細取得エラー:', error);
-    return { success: false, message: '予約詳細の取得に失敗しました' };
-  }
-}
-
-function updateInventoryStock(productId, newStock, updatedBy) {
-  try {
-    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
-    const inventorySheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.INVENTORY);
-    const data = inventorySheet.getDataRange().getValues();
-    
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === productId) {
-        inventorySheet.getRange(i + 1, 4).setValue(newStock);
-        
-        const reserved = data[i][4] || 0;
-        const remaining = Math.max(0, newStock - reserved);
-        inventorySheet.getRange(i + 1, 6).setValue(remaining);
-        inventorySheet.getRange(i + 1, 8).setValue(new Date());
-        
-        // キャッシュクリア
-        clearCache();
-        
-        logSystemEvent('INFO', '在庫更新',
-          `商品: ${data[i][1]}, 新在庫: ${newStock}, 更新者: ${updatedBy}`);
-        
-        return { success: true, message: '在庫数を更新しました' };
-      }
-    }
-    
-    return { success: false, message: '商品が見つかりません' };
-  } catch (error) {
-    console.error('❌ 在庫数更新エラー:', error);
-    logSystemEvent('ERROR', '在庫更新エラー', error.toString());
-    return { success: false, message: '更新に失敗しました: ' + error.message };
-  }
-}
-
-function bulkUpdateInventory(updates) {
-  try {
-    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
-    const inventorySheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.INVENTORY);
-    const data = inventorySheet.getDataRange().getValues();
-    
-    let updateCount = 0;
-    
-    updates.forEach(update => {
-      for (let i = 1; i < data.length; i++) {
-        if (data[i][0] === update.productId) {
-          inventorySheet.getRange(i + 1, 4).setValue(update.newStock);
-          
-          const reserved = data[i][4] || 0;
-          const remaining = Math.max(0, update.newStock - reserved);
-          inventorySheet.getRange(i + 1, 6).setValue(remaining);
-          inventorySheet.getRange(i + 1, 8).setValue(new Date());
-          
-          updateCount++;
-          break;
-        }
-      }
-    });
-    
-    // キャッシュクリア
-    clearCache();
-    
-    logSystemEvent('INFO', '一括在庫更新', `${updateCount}商品の在庫を更新`);
-    
-    return { 
-      success: true, 
-      message: `${updateCount}商品の在庫を更新しました`,
-      updateCount: updateCount
-    };
-    
-  } catch (error) {
-    console.error('❌ 一括在庫更新エラー:', error);
-    logSystemEvent('ERROR', '一括在庫更新エラー', error.toString());
-    return { success: false, message: '一括更新に失敗しました: ' + error.message };
-  }
-}
-
-function updateOrder(orderId, updateData) {
-  try {
-    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
-    const orderSheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.ORDER);
-    const data = orderSheet.getDataRange().getValues();
-    
-    let orderRowIndex = -1;
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][36] === orderId) {
-        orderRowIndex = i + 1;
-        break;
-      }
-    }
-    
-    if (orderRowIndex === -1) {
-      return { success: false, message: '予約が見つかりません' };
-    }
-    
-    if (updateData.lastName) orderSheet.getRange(orderRowIndex, 2).setValue(updateData.lastName);
-    if (updateData.firstName) orderSheet.getRange(orderRowIndex, 3).setValue(updateData.firstName);
-    if (updateData.email) orderSheet.getRange(orderRowIndex, 4).setValue(updateData.email);
-    if (updateData.pickupDate) orderSheet.getRange(orderRowIndex, 5).setValue(updateData.pickupDate);
-    if (updateData.pickupTime) orderSheet.getRange(orderRowIndex, 6).setValue(updateData.pickupTime);
-    if (updateData.note !== undefined) {
-      const noteCol = 34;
-      orderSheet.getRange(orderRowIndex, noteCol).setValue(updateData.note);
-    }
-    
-    // キャッシュクリア
-    clearCache();
-    
-    updateInventoryFromOrders();
-    
-    logSystemEvent('INFO', '予約更新', `予約ID: ${orderId}, 更新内容: ${JSON.stringify(updateData)}`);
-    
-    return { success: true, message: '予約を更新しました' };
-    
-  } catch (error) {
-    console.error('❌ 予約更新エラー:', error);
-    logSystemEvent('ERROR', '予約更新エラー', error.toString());
-    return { success: false, message: '予約の更新に失敗しました: ' + error.message };
-  }
-}
-
-function cancelOrder(orderId) {
-  try {
-    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
-    const orderSheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.ORDER);
-    const data = orderSheet.getDataRange().getValues();
-    
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][36] === orderId) {
-        const customerName = `${data[i][1]} ${data[i][2]}`;
-        orderSheet.deleteRow(i + 1);
-        
-        // キャッシュクリア
-        clearCache();
-        
-        updateInventoryFromOrders();
-        
-        logSystemEvent('INFO', '予約キャンセル', `顧客: ${customerName}, 予約ID: ${orderId}`);
-        
-        return { success: true, message: '予約をキャンセルしました' };
-      }
-    }
-    
-    return { success: false, message: '予約が見つかりません' };
-    
-  } catch (error) {
-    console.error('❌ 予約キャンセルエラー:', error);
-    logSystemEvent('ERROR', '予約キャンセルエラー', error.toString());
-    return { success: false, message: '予約のキャンセルに失敗しました: ' + error.message };
-  }
-}
-
-// 🔧 新規追加：デバッグ用スプレッドシートデータ確認関数
 function debugOrderData() {
   try {
     console.log('🔍 デバッグモード開始');
@@ -1852,3 +1728,5 @@ function debugOrderData() {
     };
   }
 }
+
+console.log('✅ Hyggelyカンパーニュ専門店 予約管理システム v5.3.2 - EmailSettings削除・修正版読み込み完了');
