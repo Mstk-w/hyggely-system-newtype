@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Hyggely管理者ダッシュボード v5.5.0</title>
+  <title>Hyggely管理者ダッシュボード v5.5.3</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
   <style>
@@ -467,8 +467,9 @@
             ${error.message}<br><br>
             <strong>対処方法:</strong><br>
             1. スプレッドシートの「予約管理票」シートを確認してください<br>
-            2. 引渡状況列（AJ列）に正しく「未引渡」または「引渡済」が入力されているか確認してください<br>
-            3. データ構造チェック機能で詳細を確認してください
+            2. AJ列（引渡状況）に正しく「未引渡」または「引渡済」が入力されているか確認してください<br>
+            3. データが破損している行がないか確認してください<br>
+            4. デバッグ情報で詳細を確認してください
           </div>
         `;
         ui.orders.error.innerHTML = `エラー: ${error.message}${errorDetail}`;
@@ -612,7 +613,7 @@
       ui.dataStructureContent.textContent = 'データ構造を確認中...';
       ui.dataStructureModal.show();
       try {
-        const structureInfo = await safeCall('checkDataStructure');
+        const structureInfo = await safeCall('checkDataIntegrityPrecise');
         ui.dataStructureContent.textContent = JSON.stringify(structureInfo, null, 2);
       } catch (error) {
         console.error('データ構造確認エラー:', error);

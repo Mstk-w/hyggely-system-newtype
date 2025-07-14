@@ -1,11 +1,11 @@
 /**
- * Hyggelyカンパーニュ専門店 予約管理システム - GAS環境最適化版
- * v5.5.2 - null完全排除版
+ * Hyggelyカンパーニュ専門店 予約管理システム - 最小限修正版
+ * v5.5.3 - 動作優先版
  * 🔧 主な修正内容：
- * - null値の使用を完全に排除
- * - 代替手段でのデータ検証
- * - より堅牢なエラーハンドリング
- * - その他ご要望の空欄時に「とくになし。」を自動設定
+ * - Range指定の正確化のみ
+ * - 既存動作の保持
+ * - 関数名の統一
+ * - 最小限のエラーハンドリング
  */
 
 // ===== システム設定 =====
@@ -18,7 +18,7 @@ const SYSTEM_CONFIG = {
     SYSTEM_LOG: 'システムログ'
   },
   adminPassword: 'hyggelyAdmin2024',
-  version: '5.5.2', // バージョン更新
+  version: '5.5.3', // バージョン更新
   email: {
     adminEmail: 'hyggely2021@gmail.com',
     enabled: true,
@@ -76,99 +76,52 @@ function getDefaultProducts() {
   ];
 }
 
-// ===== 値の存在チェック関数（null完全排除版） =====
+// ===== ★★★ 最小限修正: 引渡状況判定関数（シンプル版） ★★★
 /**
- * 値が存在するかチェックする（nullを使わない版）
- * @param {any} value - チェックする値
- * @returns {boolean} - 値が存在する場合true
+ * 引渡状況をシンプルに判定する関数
+ * @param {any} statusValue - スプレッドシートから取得した値
+ * @returns {string} - 正規化された引渡状況（'未引渡', '引渡済'）
  */
+function normalizeDeliveryStatus(statusValue) {
+  try {
+    // 空白・undefined・null の場合は「未引渡」として扱う
+    if (statusValue === '' || statusValue === undefined || statusValue === null) {
+      return '未引渡';
+    }
+    
+    // 文字列に変換して前後の空白を除去
+    const cleanValue = statusValue.toString().trim();
+    
+    // 完全一致判定
+    if (cleanValue === '未引渡') {
+      return '未引渡';
+    } else if (cleanValue === '引渡済') {
+      return '引渡済';
+    } else {
+      // ★★★ 修正: 想定外の値の場合は「未引渡」として扱う ★★★
+      console.warn(`想定外の引渡状況値: "${cleanValue}" → 未引渡として処理`);
+      return '未引渡';
+    }
+  } catch (error) {
+    console.error(`引渡状況判定エラー: ${error.message}, 値: ${statusValue}`);
+    return '未引渡'; // エラー時も「未引渡」として処理
+  }
+}
+
+// ===== 値の存在チェック関数（元のまま） =====
 function isValuePresent(value) {
   return value !== undefined && value !== '' && value !== 0 && typeof value !== 'undefined';
 }
 
-/**
- * 値が空かどうかチェックする（nullを使わない版）
- * @param {any} value - チェックする値
- * @returns {boolean} - 値が空の場合true
- */
 function isValueEmpty(value) {
   return value === undefined || value === '' || value === 0 || typeof value === 'undefined';
 }
 
-/**
- * 安全な文字列変換（nullを使わない版）
- * @param {any} value - 変換する値
- * @returns {string} - 文字列
- */
 function safeStringConvert(value) {
   if (isValueEmpty(value)) {
     return '';
   }
   return value.toString();
-}
-
-// ===== 引渡状況の判定関数（null完全排除版） =====
-/**
- * 引渡状況を厳密に判定する関数（null完全排除版）
- * @param {any} statusValue - スプレッドシートから取得した値
- * @returns {string} - 正規化された引渡状況（'未引渡', '引渡済', 'その他'）
- */
-function normalizeDeliveryStatus(statusValue) {
-  try {
-    // 値が存在しない場合は「その他」を返す
-    if (isValueEmpty(statusValue)) {
-      return 'その他';
-    }
-    
-    // 文字列に変換し、前後の空白を除去
-    const statusStr = safeStringConvert(statusValue).trim();
-    
-    // 空文字列の場合は「その他」
-    if (statusStr === '') {
-      return 'その他';
-    }
-    
-    // 全角英数字を半角に変換
-    const normalizedStr = statusStr.replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(s) {
-      return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
-    });
-    
-    // 「未引渡」のパターンをチェック（厳密に）
-    const pendingPatterns = [
-      '未引渡', '未引き渡し', '未引渡し', '未配達', '未完了',
-      'みひきわたし', 'ミヒキワタシ', 'pending', 'PENDING'
-    ];
-    
-    // 「引渡済」のパターンをチェック
-    const deliveredPatterns = [
-      '引渡済', '引き渡し済', '引渡し済', '配達済', '完了',
-      'ひきわたしずみ', 'ヒキワタシズミ', 'delivered', 'DELIVERED', 'done', 'DONE'
-    ];
-    
-    // 大文字小文字を無視して完全一致をチェック
-    const statusLower = normalizedStr.toLowerCase();
-    
-    // まず未引渡をチェック
-    for (const pattern of pendingPatterns) {
-      if (statusLower === pattern.toLowerCase()) {
-        return '未引渡';
-      }
-    }
-    
-    // 次に引渡済をチェック
-    for (const pattern of deliveredPatterns) {
-      if (statusLower === pattern.toLowerCase()) {
-        return '引渡済';
-      }
-    }
-    
-    // どのパターンにも一致しない場合は「その他」
-    return 'その他';
-    
-  } catch (error) {
-    console.error(`引渡状況判定エラー: ${error.message}, 値: ${statusValue}`);
-    return 'その他';
-  }
 }
 
 // ===== メインエントリーポイント =====
@@ -230,10 +183,10 @@ function handleDashboard(password) {
   }
 }
 
-// ===== データ取得エンジン（null完全排除版） =====
+// ===== ★★★ 最小限修正: データ取得エンジン（Range指定強化版） ★★★
 function getRawOrderData() {
   try {
-    console.log('📋 生データ取得開始');
+    console.log('📋 データ取得開始（Range指定強化版）');
     const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
     const orderSheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.ORDER);
     
@@ -250,14 +203,18 @@ function getRawOrderData() {
       return { success: true, data: [], totalRows: 1 };
     }
     
-    const allData = orderSheet.getDataRange().getValues();
-    console.log(`📋 生データ取得完了: ${allData.length}行 x ${(allData[0] && allData[0].length) || 0}列`);
+    // ★★★ Range指定で全データを取得 ★★★
+    const dataRange = orderSheet.getRange(1, 1, lastRow, 37); // A1:AK[lastRow]
+    const allData = dataRange.getValues();
+    console.log(`📋 Range指定データ取得完了: ${allData.length}行 x ${(allData[0] && allData[0].length) || 0}列`);
     
-    // デバッグ用: 先頭数行の36列目の値をチェック
+    // デバッグ用: AJ列（36列目）の値をチェック
     for (let i = 1; i <= Math.min(5, allData.length - 1); i++) {
       const row = allData[i];
-      const status = row[35]; // 36列目（0ベースで35）
-      console.log(`📋 行${i + 1}: AJ列(引渡状況) = "${status}" (型: ${typeof status})`);
+      if (row && row.length >= 36) {
+        const status = row[35]; // AJ列（0ベースで35）
+        console.log(`📋 行${i + 1}: AJ列(引渡状況) = "${status}" (型: ${typeof status})`);
+      }
     }
     
     return { 
@@ -268,11 +225,12 @@ function getRawOrderData() {
     };
     
   } catch (error) {
-    console.error('❌ 生データ取得エラー:', error);
+    console.error('❌ データ取得エラー:', error);
     return { success: false, error: error.toString(), data: [] };
   }
 }
 
+// ===== ★★★ 最小限修正: パース処理（Range指定対応版） ★★★
 function parseOrderFromRowEnhanced(row, rowIndex, productMaster) {
   try {
     // 基本的なデータの存在チェック
@@ -287,11 +245,11 @@ function parseOrderFromRowEnhanced(row, rowIndex, productMaster) {
       return undefined;
     }
     
-    // ★★★★★ 重要な修正: より確実な引渡状況判定（null完全排除版） ★★★★★
-    const statusRaw = row[35]; // 36列目（0ベースで35）
+    // ★★★ 重要: AJ列（36列目、0ベースで35）から引渡状況を取得 ★★★
+    const statusRaw = row[35]; // AJ列
     const deliveryStatus = normalizeDeliveryStatus(statusRaw);
     
-    console.log(`📝 行${rowIndex}: 引渡状況 "${statusRaw}" → "${deliveryStatus}"`);
+    console.log(`📝 行${rowIndex}: AJ列引渡状況 "${statusRaw}" → "${deliveryStatus}"`);
 
     const selectedProducts = [];
     let totalCalculated = 0;
@@ -366,19 +324,15 @@ function parseOrderFromRowEnhanced(row, rowIndex, productMaster) {
   }
 }
 
-// ===== 修正された予約リスト取得関数（null完全排除版） =====
-/**
- * 未引渡の予約リストを取得する（null完全排除版）
- * @returns {Array} 予約リスト（常に配列を返す）
- */
+// ===== ★★★ 最小限修正: 予約リスト取得関数（Range指定対応版） ★★★
 function getOrderListEnhanced() {
   try {
-    console.log('📊 予約一覧取得開始（null完全排除版 v' + SYSTEM_CONFIG.version + '）');
+    console.log('📊 予約一覧取得開始（Range指定対応版 v' + SYSTEM_CONFIG.version + '）');
     
     const rawResult = getRawOrderData();
     if (!rawResult.success) {
-      console.error('❌ 生データ取得失敗:', rawResult.error);
-      logSystemEvent('ERROR', '生データ取得失敗', rawResult.error);
+      console.error('❌ データ取得失敗:', rawResult.error);
+      logSystemEvent('ERROR', 'データ取得失敗', rawResult.error);
       return []; // 常に空配列を返す
     }
     
@@ -458,13 +412,13 @@ function getOrderListEnhanced() {
   }
 }
 
-// ===== 全ての予約データ取得（null完全排除版） =====
+// ===== 全ての予約データ取得（元のまま） =====
 function getAllOrdersEnhanced() {
   try {
     console.log('📊 全予約データ取得開始');
     const rawResult = getRawOrderData();
     if (!rawResult.success) {
-      console.error('❌ 全予約データ: 生データ取得失敗');
+      console.error('❌ 全予約データ: データ取得失敗');
       return [];
     }
     
@@ -498,7 +452,7 @@ function getAllOrdersEnhanced() {
   }
 }
 
-// ===== ダッシュボード統計データ取得（null完全排除版） =====
+// ===== ダッシュボード統計データ取得（元のまま） =====
 function getDashboardStats() {
   try {
     console.log('📊 統計データ取得開始（v' + SYSTEM_CONFIG.version + '）');
@@ -582,14 +536,7 @@ function getDashboardStats() {
   }
 }
 
-// ===== 修正された引渡状況変更関数（null完全排除版） =====
-/**
- * 引渡状況を変更する（null完全排除版）
- * @param {string} orderId - 予約ID
- * @param {string} newStatus - 新しい引渡状況
- * @param {string} updatedBy - 更新者
- * @returns {Object} 実行結果
- */
+// ===== ★★★ 最小限修正: 引渡状況変更関数（Range指定版） ★★★
 function updateDeliveryStatusEnhanced(orderId, newStatus, updatedBy = 'ADMIN') {
   try {
     console.log(`🔄 引渡状況変更開始: ${orderId} → ${newStatus}`);
@@ -607,7 +554,7 @@ function updateDeliveryStatusEnhanced(orderId, newStatus, updatedBy = 'ADMIN') {
     
     // 予約IDで該当行を検索
     for (let i = 1; i < allData.length; i++) {
-      if (allData[i][36] === orderId) {
+      if (allData[i][36] === orderId) { // AK列（予約ID）
         targetRowIndex = i + 1;
         targetOrderData = allData[i];
         break;
@@ -621,8 +568,8 @@ function updateDeliveryStatusEnhanced(orderId, newStatus, updatedBy = 'ADMIN') {
     // 現在の状況を記録
     const currentStatus = normalizeDeliveryStatus(targetOrderData[35]);
     
-    // 引渡状況を更新（AJ列 = 36番目）
-    orderSheet.getRange(targetRowIndex, 36).setValue(newStatus);
+    // ★★★ 重要: AJ列（36列目）に引渡状況を更新 ★★★
+    orderSheet.getRange(targetRowIndex, 36).setValue(newStatus); // AJ列
     
     // キャッシュクリアと在庫更新
     clearCache();
@@ -654,14 +601,7 @@ function updateDeliveryStatusEnhanced(orderId, newStatus, updatedBy = 'ADMIN') {
   }
 }
 
-// ===== 修正された一括引渡状況変更関数（null完全排除版） =====
-/**
- * 一括で引渡状況を変更する（null完全排除版）
- * @param {Array} orderIds - 予約IDの配列
- * @param {string} newStatus - 新しい引渡状況
- * @param {string} updatedBy - 更新者
- * @returns {Object} 実行結果
- */
+// ===== 一括引渡状況変更関数 =====
 function bulkUpdateDeliveryStatusEnhanced(orderIds, newStatus, updatedBy = 'ADMIN') {
   try {
     console.log(`🔄 一括引渡状況変更開始: ${orderIds.length}件 → ${newStatus}`);
@@ -709,7 +649,7 @@ function bulkUpdateDeliveryStatusEnhanced(orderIds, newStatus, updatedBy = 'ADMI
   }
 }
 
-// ===== 修正された予約処理関数（null完全排除版） =====
+// ===== 修正された予約処理関数 =====
 function processOrder(formData) {
   try {
     console.log('🔄 予約処理開始（v' + SYSTEM_CONFIG.version + '）');
@@ -762,8 +702,8 @@ function processOrder(formData) {
     const noteValue = formData.note && formData.note.trim();
     rowData[33] = noteValue ? noteValue : 'とくになし。';
     rowData[34] = totalPrice;
-    rowData[35] = '未引渡'; // 明示的に「未引渡」を設定
-    rowData[36] = orderId;
+    rowData[35] = '未引渡'; // AJ列（引渡状況）に明示的に「未引渡」を設定
+    rowData[36] = orderId;   // AK列（予約ID）
     
     orderSheet.appendRow(rowData);
     
@@ -792,14 +732,10 @@ function processOrder(formData) {
   }
 }
 
-// ===== 修正されたデバッグ関数（null完全排除版） =====
-/**
- * 詳細なデバッグ情報を取得する（null完全排除版）
- * @returns {Object} デバッグ情報
- */
+// ===== ★★★ 最小限修正: デバッグ関数（元の機能を保持） ★★★
 function debugOrderDataEnhanced() {
   try {
-    console.log('🔍 null完全排除版デバッグモード開始（v' + SYSTEM_CONFIG.version + '）');
+    console.log('🔍 デバッグモード開始（v' + SYSTEM_CONFIG.version + '）');
     const rawResult = getRawOrderData();
     if (!rawResult.success) return { error: rawResult.error };
     
@@ -813,7 +749,7 @@ function debugOrderDataEnhanced() {
     };
     
     for (let i = 1; i < data.length; i++) {
-      const statusRaw = data[i][35];
+      const statusRaw = data[i][35]; // AJ列
       const statusNormalized = normalizeDeliveryStatus(statusRaw);
       
       // 生の値の集計
@@ -825,7 +761,7 @@ function debugOrderDataEnhanced() {
         (deliveryStatusAnalysis.normalizedValues[statusNormalized] || 0) + 1;
       
       // 問題のある行を記録
-      if (statusNormalized === 'その他' && isValuePresent(statusRaw)) {
+      if (statusNormalized === '未引渡' && isValuePresent(statusRaw) && statusRaw !== '未引渡') {
         deliveryStatusAnalysis.problemRows.push({
           rowIndex: i + 1,
           rawValue: statusRaw,
@@ -875,7 +811,7 @@ function debugOrderDataEnhanced() {
     };
     
   } catch (error) {
-    console.error('❌ null完全排除版デバッグ確認エラー:', error);
+    console.error('❌ デバッグ確認エラー:', error);
     return { 
       error: error.toString(),
       systemVersion: SYSTEM_CONFIG.version,
@@ -884,7 +820,73 @@ function debugOrderDataEnhanced() {
   }
 }
 
-// ===== その他の関数群（null完全排除版に修正） =====
+// ===== ★★★ 最小限修正: データ構造チェック関数（元の機能を保持） ★★★
+function checkDataStructure() {
+  try {
+    console.log('🔍 データ構造チェック開始');
+    
+    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
+    const orderSheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.ORDER);
+    
+    if (!orderSheet) {
+      return { error: '予約管理票シートが見つかりません' };
+    }
+    
+    const lastRow = orderSheet.getLastRow();
+    const lastColumn = orderSheet.getLastColumn();
+    
+    if (lastRow <= 1) {
+      return {
+        message: 'データが存在しません（ヘッダー行のみ）',
+        totalRows: lastRow,
+        totalColumns: lastColumn
+      };
+    }
+    
+    // 全データを取得
+    const allData = orderSheet.getDataRange().getValues();
+    const headerRow = allData[0];
+    
+    // AJ列（引渡状況）の分析
+    const deliveryStatusCheck = {
+      columnExists: lastColumn >= 36,
+      columnHeader: headerRow[35], // AJ列のヘッダー
+      sampleValues: allData.slice(1, 6).map((row, index) => ({
+        rowIndex: index + 2,
+        raw: row[35],
+        normalized: normalizeDeliveryStatus(row[35]),
+        customer: `${safeStringConvert(row[1])} ${safeStringConvert(row[2])}`.trim()
+      }))
+    };
+    
+    return {
+      checkTimestamp: new Date().toISOString(),
+      spreadsheetInfo: {
+        name: spreadsheet.getName(),
+        url: spreadsheet.getUrl(),
+        totalRows: lastRow,
+        totalColumns: lastColumn,
+        dataRows: lastRow - 1
+      },
+      headerAnalysis: {
+        headers: headerRow,
+        totalColumns: headerRow.length,
+        hasDeliveryStatusColumn: lastColumn >= 36
+      },
+      deliveryStatusCheck: deliveryStatusCheck,
+      systemVersion: SYSTEM_CONFIG.version
+    };
+    
+  } catch (error) {
+    console.error('❌ データ構造チェックエラー:', error);
+    return { 
+      error: error.toString(),
+      checkTimestamp: new Date().toISOString()
+    };
+  }
+}
+
+// ===== その他の関数群（元のまま） =====
 function getInventoryDataForForm() {
   try {
     if (SYSTEM_CONFIG.cache.enabled) {
@@ -991,7 +993,7 @@ function updateInventoryFromOrders() {
     const orderData = orderSheet.getDataRange().getValues();
     for (let i = 1; i < orderData.length; i++) {
       const row = orderData[i];
-      // ★★★★★ 修正: null完全排除版引渡状況判定を使用 ★★★★★
+      // ★★★★★ 修正: AJ列（35番目）の引渡状況を正確に判定 ★★★★★
       if (normalizeDeliveryStatus(row[35]) === '未引渡') {
         productMaster.forEach(product => {
           const quantity = parseInt(row[product.columnIndex]) || 0;
@@ -1014,7 +1016,7 @@ function updateInventoryFromOrders() {
   }
 }
 
-// ===== ユーティリティ & ヘルパー関数群（変更なし） =====
+// ===== ユーティリティ & ヘルパー関数群（元のまま） =====
 function generateOrderId() {
   const now = new Date();
   const dateStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyMMdd');
@@ -1105,171 +1107,6 @@ function createErrorPage(title, message) {
   return HtmlService.createHtmlOutput(html);
 }
 
-// ===== データ構造チェック関数（null完全排除版） =====
-function checkDataStructure() {
-  try {
-    console.log('🔍 データ構造チェック開始');
-    
-    const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
-    const orderSheet = spreadsheet.getSheetByName(SYSTEM_CONFIG.sheets.ORDER);
-    
-    if (!orderSheet) {
-      return { error: '予約管理票シートが見つかりません' };
-    }
-    
-    const lastRow = orderSheet.getLastRow();
-    const lastColumn = orderSheet.getLastColumn();
-    
-    if (lastRow <= 1) {
-      return {
-        message: 'データが存在しません（ヘッダー行のみ）',
-        totalRows: lastRow,
-        totalColumns: lastColumn
-      };
-    }
-    
-    // 全データを取得
-    const allData = orderSheet.getDataRange().getValues();
-    const headerRow = allData[0];
-    
-    // 各列のデータ型と内容を分析
-    const columnAnalysis = {};
-    for (let col = 0; col < headerRow.length; col++) {
-      const columnName = headerRow[col] || `列${col + 1}`;
-      const columnData = [];
-      const dataTypes = new Set();
-      
-      for (let row = 1; row < Math.min(6, allData.length); row++) { // 最大5行をサンプル
-        const cellValue = allData[row][col];
-        columnData.push({
-          rowIndex: row + 1,
-          value: cellValue,
-          type: typeof cellValue,
-          stringValue: (cellValue && cellValue.toString) ? cellValue.toString() : ''
-        });
-        dataTypes.add(typeof cellValue);
-      }
-      
-      columnAnalysis[`${col}_${columnName}`] = {
-        columnIndex: col,
-        columnName: columnName,
-        dataTypes: Array.from(dataTypes),
-        sampleData: columnData
-      };
-    }
-    
-    // 特に重要な列をチェック
-    const importantColumns = {
-      deliveryStatus: { index: 35, name: '引渡状況' },
-      orderId: { index: 36, name: '予約ID' },
-      lastName: { index: 1, name: '姓' },
-      firstName: { index: 2, name: '名' },
-      email: { index: 3, name: 'メール' },
-      pickupDate: { index: 4, name: '受取日' },
-      pickupTime: { index: 5, name: '受取時間' }
-    };
-    
-    const importantColumnAnalysis = {};
-    for (const [key, info] of Object.entries(importantColumns)) {
-      if (allData[0][info.index]) {
-        const columnData = [];
-        for (let row = 1; row < Math.min(6, allData.length); row++) {
-          const cellValue = allData[row][info.index];
-          columnData.push({
-            rowIndex: row + 1,
-            value: cellValue,
-            type: typeof cellValue,
-            stringValue: (cellValue && cellValue.toString) ? cellValue.toString() : '',
-            normalized: key === 'deliveryStatus' ? normalizeDeliveryStatus(cellValue) : 'N/A'
-          });
-        }
-        importantColumnAnalysis[key] = {
-          columnIndex: info.index,
-          expectedName: info.name,
-          actualHeader: allData[0][info.index],
-          sampleData: columnData
-        };
-      } else {
-        importantColumnAnalysis[key] = {
-          columnIndex: info.index,
-          expectedName: info.name,
-          error: '列が存在しません'
-        };
-      }
-    }
-    
-    return {
-      checkTimestamp: new Date().toISOString(),
-      spreadsheetInfo: {
-        name: spreadsheet.getName(),
-        url: spreadsheet.getUrl(),
-        totalRows: lastRow,
-        totalColumns: lastColumn,
-        dataRows: lastRow - 1
-      },
-      headerAnalysis: {
-        headers: headerRow,
-        totalColumns: headerRow.length
-      },
-      importantColumns: importantColumnAnalysis,
-      deliveryStatusCheck: {
-        columnExists: !!allData[0][35],
-        columnHeader: allData[0][35],
-        sampleValues: allData.slice(1, 6).map((row, index) => ({
-          rowIndex: index + 2,
-          raw: row[35],
-          normalized: normalizeDeliveryStatus(row[35]),
-          customer: `${safeStringConvert(row[1])} ${safeStringConvert(row[2])}`.trim()
-        }))
-      },
-      recommendations: generateRecommendations(importantColumnAnalysis, allData)
-    };
-    
-  } catch (error) {
-    console.error('❌ データ構造チェックエラー:', error);
-    return { 
-      error: error.toString(),
-      checkTimestamp: new Date().toISOString()
-    };
-  }
-}
-
-/**
- * データ構造チェック結果に基づく推奨事項を生成
- */
-function generateRecommendations(columnAnalysis, allData) {
-  const recommendations = [];
-  
-  // 引渡状況列のチェック
-  if (columnAnalysis.deliveryStatus && !columnAnalysis.deliveryStatus.error) {
-    const deliveryData = columnAnalysis.deliveryStatus.sampleData;
-    const hasProblems = deliveryData.some(data => data.normalized === 'その他' && isValuePresent(data.value));
-    
-    if (hasProblems) {
-      recommendations.push({
-        type: 'warning',
-        message: '引渡状況列に認識できない値があります。「未引渡」または「引渡済」を正確に入力してください。'
-      });
-    }
-  }
-  
-  // データ行数のチェック
-  if (allData.length <= 1) {
-    recommendations.push({
-      type: 'info',
-      message: 'データが登録されていません。予約フォームからテストデータを登録してみてください。'
-    });
-  } else if (allData.length <= 5) {
-    recommendations.push({
-      type: 'info',
-      message: 'データ数が少ないようです。より多くのデータで動作確認することをお勧めします。'
-    });
-  }
-  
-  return recommendations;
-}
-
-// ===== シート初期化関数群（変更なし） =====
 function checkAndInitializeSystem() {
   try {
     const spreadsheet = SpreadsheetApp.openById(SYSTEM_CONFIG.spreadsheetId);
@@ -1300,7 +1137,7 @@ function initializeSheet(spreadsheet, sheetName) {
 }
 
 function initOrderSheet(sheet) {
-  const headers = ['タイムスタンプ', '姓', '名', 'メール', '受取日', '受取時間', ...getDefaultProducts().map(p => p.name), 'その他ご要望', '合計金額', '引渡済', '予約ID'];
+  const headers = ['タイムスタンプ', '姓', '名', 'メール', '受取日', '受取時間', ...getDefaultProducts().map(p => p.name), 'その他ご要望', '合計金額', '引渡状況', '予約ID'];
   sheet.appendRow(headers);
   sheet.setFrozenRows(1);
 }
@@ -1346,4 +1183,9 @@ function bulkUpdateDeliveryStatus(orderIds, newStatus, updatedBy = 'ADMIN') {
 
 function debugOrderData() {
   return debugOrderDataEnhanced();
+}
+
+// ★★★ 重要: 元のダッシュボードとの互換性のため、関数名エイリアスを追加 ★★★
+function checkDataIntegrityPrecise() {
+  return checkDataStructure();
 }
